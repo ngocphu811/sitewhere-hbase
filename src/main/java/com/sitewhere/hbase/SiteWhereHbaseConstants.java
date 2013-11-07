@@ -9,6 +9,8 @@
  */
 package com.sitewhere.hbase;
 
+import org.hbase.async.Bytes;
+
 /**
  * Constants associated with the SiteWhere column family.
  * 
@@ -17,32 +19,35 @@ package com.sitewhere.hbase;
 public interface SiteWhereHbaseConstants {
 
 	/** SiteWhere family id */
-	public static final byte[] FAMILY_ID = "s".getBytes();
+	public static final byte[] FAMILY_ID = Bytes.UTF8("s");
 
 	/** Sites table name */
-	public static final byte[] SITES_TABLE_NAME = "sites".getBytes();
+	public static final byte[] UID_TABLE_NAME = Bytes.UTF8("sw-uids");
+
+	/** Sites table name */
+	public static final byte[] SITES_TABLE_NAME = Bytes.UTF8("sw-sites");
 
 	/** Devices table name */
-	public static final byte[] DEVICES_TABLE_NAME = "devices".getBytes();
+	public static final byte[] DEVICES_TABLE_NAME = Bytes.UTF8("sw-devices");
 
 	/** Assignments table name */
-	public static final byte[] ASSIGNMENTS_TABLE_NAME = "assignments".getBytes();
+	public static final byte[] ASSIGNMENTS_TABLE_NAME = Bytes.UTF8("sw-assignments");
 
 	/** Measurements table name */
-	public static final byte[] MEASUREMENTS_TABLE_NAME = "measurements".getBytes();
+	public static final byte[] MEASUREMENTS_TABLE_NAME = Bytes.UTF8("sw-measurements");
 
 	/** Locations table name */
-	public static final byte[] LOCATIONS_TABLE_NAME = "locations".getBytes();
+	public static final byte[] LOCATIONS_TABLE_NAME = Bytes.UTF8("sw-locations");
 
 	/** Alerts table name */
-	public static final byte[] ALERTS_TABLE_NAME = "alerts".getBytes();
+	public static final byte[] ALERTS_TABLE_NAME = Bytes.UTF8("sw-alerts");
 
 	/** Zones table name */
-	public static final byte[] ZONES_TABLE_NAME = "zones".getBytes();
+	public static final byte[] ZONES_TABLE_NAME = Bytes.UTF8("sw-zones");
 
 	/** Users table name */
-	public static final byte[] USERS_TABLE_NAME = "users".getBytes();
+	public static final byte[] USERS_TABLE_NAME = Bytes.UTF8("sw-users");
 
 	/** Authorities table name */
-	public static final byte[] AUTHORITIES_TABLE_NAME = "authorities".getBytes();
+	public static final byte[] AUTHORITIES_TABLE_NAME = Bytes.UTF8("sw-authorities");
 }

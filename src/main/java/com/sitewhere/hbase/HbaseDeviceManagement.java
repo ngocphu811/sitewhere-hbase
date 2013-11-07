@@ -9,15 +9,13 @@
  */
 package com.sitewhere.hbase;
 
-import java.io.IOException;
 import java.util.List;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.log4j.Logger;
 
-import com.sitewhere.hbase.device.HbaseTables;
+import com.sitewhere.hbase.common.SiteWhereTables;
+import com.sitewhere.hbase.uid.UniqueIdType;
+import com.sitewhere.hbase.uid.UuidCounterMap;
 import com.sitewhere.rest.service.search.SearchResults;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.common.IDateRangeSearchCriteria;
@@ -52,6 +50,12 @@ public class HbaseDeviceManagement implements IDeviceManagement {
 	/** Static logger instance */
 	private static final Logger LOGGER = Logger.getLogger(HbaseDeviceManagement.class);
 
+	/** Used to communicate with HBase */
+	private HBaseConnectivity hbase;
+
+	/** Keeps up with unique keys related to sites */
+	private UuidCounterMap siteKeys;
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -59,8 +63,24 @@ public class HbaseDeviceManagement implements IDeviceManagement {
 	 */
 	public void start() throws SiteWhereException {
 		LOGGER.info("HBase device management starting...");
+		String quorum = "192.168.32.128";
+		this.hbase = new HBaseConnectivity();
+		hbase.start(quorum);
 		ensureTablesExist();
+		loadUniqueIdCaches();
 		LOGGER.info("HBase device management started.");
+	}
+
+	/**
+	 * Load caches with unique mappings for various entities.
+	 * 
+	 * @throws SiteWhereException
+	 */
+	protected void loadUniqueIdCaches() throws SiteWhereException {
+		siteKeys = new UuidCounterMap(hbase, UniqueIdType.SiteKey, UniqueIdType.SiteValue);
+		siteKeys.refresh();
+		String uuid = siteKeys.createUniqueId();
+		LOGGER.info("Created site UUID: " + uuid);
 	}
 
 	/**
@@ -69,24 +89,14 @@ public class HbaseDeviceManagement implements IDeviceManagement {
 	 * @throws SiteWhereException
 	 */
 	protected void ensureTablesExist() throws SiteWhereException {
-		try {
-			Configuration config = HBaseConfiguration.create();
-			config.set("hbase.zookeeper.quorum", "192.168.32.128");
-			HBaseAdmin admin = new HBaseAdmin(config);
-			try {
-				HbaseTables.assureTable(admin, SiteWhereHbaseConstants.SITES_TABLE_NAME);
-				HbaseTables.assureTable(admin, SiteWhereHbaseConstants.DEVICES_TABLE_NAME);
-				HbaseTables.assureTable(admin, SiteWhereHbaseConstants.ASSIGNMENTS_TABLE_NAME);
-				HbaseTables.assureTable(admin, SiteWhereHbaseConstants.ZONES_TABLE_NAME);
-				HbaseTables.assureTable(admin, SiteWhereHbaseConstants.MEASUREMENTS_TABLE_NAME);
-				HbaseTables.assureTable(admin, SiteWhereHbaseConstants.LOCATIONS_TABLE_NAME);
-				HbaseTables.assureTable(admin, SiteWhereHbaseConstants.ALERTS_TABLE_NAME);
-			} finally {
-				admin.close();
-			}
-		} catch (IOException e) {
-			throw new SiteWhereException(e);
-		}
+		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.UID_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.SITES_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.DEVICES_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.ASSIGNMENTS_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.ZONES_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.MEASUREMENTS_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.LOCATIONS_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.ALERTS_TABLE_NAME);
 	}
 
 	/*
@@ -95,7 +105,7 @@ public class HbaseDeviceManagement implements IDeviceManagement {
 	 * @see com.sitewhere.spi.ISiteWhereLifecycle#stop()
 	 */
 	public void stop() throws SiteWhereException {
-		LOGGER.info("HBase device management stopped.");
+		hbase.stop();
 	}
 
 	@Override
