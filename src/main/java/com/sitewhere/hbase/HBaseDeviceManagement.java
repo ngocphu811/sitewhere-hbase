@@ -45,16 +45,19 @@ import com.sitewhere.spi.device.request.IZoneCreateRequest;
  * 
  * @author Derek
  */
-public class HbaseDeviceManagement implements IDeviceManagement {
+public class HBaseDeviceManagement implements IDeviceManagement {
 
 	/** Static logger instance */
-	private static final Logger LOGGER = Logger.getLogger(HbaseDeviceManagement.class);
+	private static final Logger LOGGER = Logger.getLogger(HBaseDeviceManagement.class);
 
 	/** Used to communicate with HBase */
 	private HBaseConnectivity hbase;
 
 	/** Keeps up with unique keys related to sites */
 	private UuidCounterMap siteKeys;
+
+	/** Zookeeper quorum */
+	private String quorum;
 
 	/*
 	 * (non-Javadoc)
@@ -63,9 +66,8 @@ public class HbaseDeviceManagement implements IDeviceManagement {
 	 */
 	public void start() throws SiteWhereException {
 		LOGGER.info("HBase device management starting...");
-		String quorum = "192.168.32.128";
 		this.hbase = new HBaseConnectivity();
-		hbase.start(quorum);
+		hbase.start(getQuorum());
 		ensureTablesExist();
 		loadUniqueIdCaches();
 		LOGGER.info("HBase device management started.");
@@ -89,14 +91,14 @@ public class HbaseDeviceManagement implements IDeviceManagement {
 	 * @throws SiteWhereException
 	 */
 	protected void ensureTablesExist() throws SiteWhereException {
-		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.UID_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.SITES_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.DEVICES_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.ASSIGNMENTS_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.ZONES_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.MEASUREMENTS_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.LOCATIONS_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHbaseConstants.ALERTS_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.UID_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.SITES_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.DEVICES_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.ASSIGNMENTS_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.ZONES_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.MEASUREMENTS_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.LOCATIONS_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.ALERTS_TABLE_NAME);
 	}
 
 	/*
@@ -380,5 +382,13 @@ public class HbaseDeviceManagement implements IDeviceManagement {
 	public IZone deleteZone(String zoneToken, boolean force) throws SiteWhereException {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	public String getQuorum() {
+		return quorum;
+	}
+
+	public void setQuorum(String quorum) {
+		this.quorum = quorum;
 	}
 }

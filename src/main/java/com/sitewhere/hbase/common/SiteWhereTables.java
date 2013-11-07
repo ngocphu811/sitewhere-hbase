@@ -14,7 +14,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.log4j.Logger;
 
 import com.sitewhere.hbase.HBaseConnectivity;
-import com.sitewhere.hbase.SiteWhereHbaseConstants;
+import com.sitewhere.hbase.SiteWhereHBaseConstants;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -40,7 +40,7 @@ public class SiteWhereTables {
 			if (!hbase.getAdmin().tableExists(tableName)) {
 				LOGGER.info("Table '" + tnameStr + "' does not exist. Creating table...");
 				HTableDescriptor table = new HTableDescriptor(tableName);
-				HColumnDescriptor family = new HColumnDescriptor(SiteWhereHbaseConstants.FAMILY_ID);
+				HColumnDescriptor family = new HColumnDescriptor(SiteWhereHBaseConstants.FAMILY_ID);
 				table.addFamily(family);
 				hbase.getAdmin().createTable(table);
 				LOGGER.info("Table '" + tnameStr + "' created successfully.");

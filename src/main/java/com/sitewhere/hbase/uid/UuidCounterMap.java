@@ -20,7 +20,7 @@ import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 
 import com.sitewhere.hbase.HBaseConnectivity;
-import com.sitewhere.hbase.SiteWhereHbaseConstants;
+import com.sitewhere.hbase.SiteWhereHBaseConstants;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -57,21 +57,21 @@ public class UuidCounterMap extends UniqueIdMap<String, Long> {
 		ByteBuffer counterRow = ByteBuffer.allocate(2);
 		counterRow.put(UniqueIdType.CounterPlaceholder.getIndicator());
 		counterRow.put(getKeyIndicator().getIndicator());
-		GetRequest get = new GetRequest(SiteWhereHbaseConstants.UID_TABLE_NAME, counterRow.array());
+		GetRequest get = new GetRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, counterRow.array());
 		try {
 			// Check whether a counter row exists.
 			ArrayList<KeyValue> results = getHbase().getClient().get(get).joinUninterruptibly();
 			if (!results.isEmpty()) {
 				// Increment existing counter row atomically.
 				AtomicIncrementRequest request = new AtomicIncrementRequest(
-						SiteWhereHbaseConstants.UID_TABLE_NAME, counterRow.array(),
-						SiteWhereHbaseConstants.FAMILY_ID, UniqueIdMap.VALUE_QUAL);
+						SiteWhereHBaseConstants.UID_TABLE_NAME, counterRow.array(),
+						SiteWhereHBaseConstants.FAMILY_ID, UniqueIdMap.VALUE_QUAL);
 				return getHbase().getClient().atomicIncrement(request).joinUninterruptibly();
 			} else {
 				// Write initial counter row.
-				KeyValue one = new KeyValue(counterRow.array(), SiteWhereHbaseConstants.FAMILY_ID,
+				KeyValue one = new KeyValue(counterRow.array(), SiteWhereHBaseConstants.FAMILY_ID,
 						UniqueIdMap.VALUE_QUAL, Bytes.fromLong(1));
-				PutRequest put = new PutRequest(SiteWhereHbaseConstants.UID_TABLE_NAME, one);
+				PutRequest put = new PutRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, one);
 				getHbase().getClient().put(put).joinUninterruptibly();
 				return 1L;
 			}

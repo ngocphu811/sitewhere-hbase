@@ -16,7 +16,7 @@ import org.hbase.async.Bytes;
  * 
  * @author Derek
  */
-public interface SiteWhereHbaseConstants {
+public interface SiteWhereHBaseConstants {
 
 	/** SiteWhere family id */
 	public static final byte[] FAMILY_ID = Bytes.UTF8("s");

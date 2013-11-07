@@ -23,7 +23,7 @@ import org.hbase.async.PutRequest;
 import org.hbase.async.Scanner;
 
 import com.sitewhere.hbase.HBaseConnectivity;
-import com.sitewhere.hbase.SiteWhereHbaseConstants;
+import com.sitewhere.hbase.SiteWhereHBaseConstants;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -86,8 +86,8 @@ public abstract class UniqueIdMap<N, V> {
 		nameBuffer.put(keyIndicator.getIndicator());
 		nameBuffer.put(nameBytes);
 		byte[] valueBytes = convertValue(value);
-		PutRequest namePut = new PutRequest(SiteWhereHbaseConstants.UID_TABLE_NAME, nameBuffer.array(),
-				SiteWhereHbaseConstants.FAMILY_ID, VALUE_QUAL, valueBytes);
+		PutRequest namePut = new PutRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, nameBuffer.array(),
+				SiteWhereHBaseConstants.FAMILY_ID, VALUE_QUAL, valueBytes);
 		try {
 			hbase.getClient().put(namePut).joinUninterruptibly();
 			nameToValue.put(name, value);
@@ -109,8 +109,8 @@ public abstract class UniqueIdMap<N, V> {
 		valueBuffer.put(valueIndicator.getIndicator());
 		valueBuffer.put(valueBytes);
 		byte[] nameBytes = convertName(name);
-		PutRequest valuePut = new PutRequest(SiteWhereHbaseConstants.UID_TABLE_NAME, valueBuffer.array(),
-				SiteWhereHbaseConstants.FAMILY_ID, VALUE_QUAL, nameBytes);
+		PutRequest valuePut = new PutRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, valueBuffer.array(),
+				SiteWhereHBaseConstants.FAMILY_ID, VALUE_QUAL, nameBytes);
 		try {
 			hbase.getClient().put(valuePut).joinUninterruptibly();
 			valueToName.put(value, name);
@@ -158,7 +158,7 @@ public abstract class UniqueIdMap<N, V> {
 	 * @throws Exception
 	 */
 	protected List<KeyValue> getValuesForType(UniqueIdType type) throws Exception {
-		Scanner keyScanner = hbase.getClient().newScanner(SiteWhereHbaseConstants.UID_TABLE_NAME);
+		Scanner keyScanner = hbase.getClient().newScanner(SiteWhereHBaseConstants.UID_TABLE_NAME);
 		byte startByte = keyIndicator.getIndicator();
 		byte stopByte = keyIndicator.getIndicator();
 		stopByte++;
@@ -202,7 +202,7 @@ public abstract class UniqueIdMap<N, V> {
 		ByteBuffer nameBuffer = ByteBuffer.allocate(nameBytes.length + 1);
 		nameBuffer.put(keyIndicator.getIndicator());
 		nameBuffer.put(nameBytes);
-		GetRequest request = new GetRequest(SiteWhereHbaseConstants.UID_TABLE_NAME, nameBuffer.array());
+		GetRequest request = new GetRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, nameBuffer.array());
 		try {
 			ArrayList<KeyValue> matches = hbase.getClient().get(request).joinUninterruptibly();
 			if (matches.size() > 0) {
@@ -241,7 +241,7 @@ public abstract class UniqueIdMap<N, V> {
 		ByteBuffer valueBuffer = ByteBuffer.allocate(valueBytes.length + 1);
 		valueBuffer.put(valueIndicator.getIndicator());
 		valueBuffer.put(valueBytes);
-		GetRequest request = new GetRequest(SiteWhereHbaseConstants.UID_TABLE_NAME, valueBuffer.array());
+		GetRequest request = new GetRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, valueBuffer.array());
 		try {
 			ArrayList<KeyValue> matches = hbase.getClient().get(request).joinUninterruptibly();
 			if (matches.size() > 0) {
