@@ -14,8 +14,10 @@ import java.util.List;
 import org.apache.log4j.Logger;
 
 import com.sitewhere.hbase.common.SiteWhereTables;
-import com.sitewhere.hbase.uid.UniqueIdType;
-import com.sitewhere.hbase.uid.UuidCounterMap;
+import com.sitewhere.hbase.model.HBaseDevice;
+import com.sitewhere.hbase.model.HBaseSite;
+import com.sitewhere.hbase.model.HBaseZone;
+import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.service.search.SearchResults;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.common.IDateRangeSearchCriteria;
@@ -53,9 +55,6 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 	/** Used to communicate with HBase */
 	private HBaseConnectivity hbase;
 
-	/** Keeps up with unique keys related to sites */
-	private UuidCounterMap siteKeys;
-
 	/** Zookeeper quorum */
 	private String quorum;
 
@@ -68,21 +67,14 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		LOGGER.info("HBase device management starting...");
 		this.hbase = new HBaseConnectivity();
 		hbase.start(getQuorum());
-		ensureTablesExist();
-		loadUniqueIdCaches();
-		LOGGER.info("HBase device management started.");
-	}
 
-	/**
-	 * Load caches with unique mappings for various entities.
-	 * 
-	 * @throws SiteWhereException
-	 */
-	protected void loadUniqueIdCaches() throws SiteWhereException {
-		siteKeys = new UuidCounterMap(hbase, UniqueIdType.SiteKey, UniqueIdType.SiteValue);
-		siteKeys.refresh();
-		String uuid = siteKeys.createUniqueId();
-		LOGGER.info("Created site UUID: " + uuid);
+		LOGGER.info("Verifying tables...");
+		ensureTablesExist();
+
+		LOGGER.info("Loading id management...");
+		IdManager.getInstance().load(hbase);
+
+		LOGGER.info("HBase device management started.");
 	}
 
 	/**
@@ -94,11 +86,6 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.UID_TABLE_NAME);
 		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.SITES_TABLE_NAME);
 		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.DEVICES_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.ASSIGNMENTS_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.ZONES_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.MEASUREMENTS_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.LOCATIONS_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.ALERTS_TABLE_NAME);
 	}
 
 	/*
@@ -110,16 +97,25 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		hbase.stop();
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#createDevice(com.sitewhere.spi.device
+	 * .request.IDeviceCreateRequest)
+	 */
 	public IDevice createDevice(IDeviceCreateRequest device) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDevice.createDevice(hbase, device);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#getDeviceByHardwareId(java.lang.String)
+	 */
 	public IDevice getDeviceByHardwareId(String hardwareId) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDevice.getDeviceByHardwareId(hbase, hardwareId);
 	}
 
 	@Override
@@ -323,10 +319,15 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#createSite(com.sitewhere.spi.device.
+	 * request.ISiteCreateRequest)
+	 */
 	public ISite createSite(ISiteCreateRequest request) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseSite.createSite(hbase, request);
 	}
 
 	@Override
@@ -341,10 +342,13 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#getSiteByToken(java.lang.String)
+	 */
 	public ISite getSiteByToken(String token) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseSite.getSiteByToken(hbase, token);
 	}
 
 	@Override
@@ -353,10 +357,15 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#createZone(com.sitewhere.spi.device.
+	 * ISite, com.sitewhere.spi.device.request.IZoneCreateRequest)
+	 */
 	public IZone createZone(ISite site, IZoneCreateRequest request) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseZone.createZone(hbase, site, request);
 	}
 
 	@Override
@@ -365,10 +374,13 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#getZone(java.lang.String)
+	 */
 	public IZone getZone(String zoneToken) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseZone.getZone(hbase, zoneToken);
 	}
 
 	@Override

@@ -15,7 +15,7 @@ package com.sitewhere.hbase.uid;
  * @author Derek
  */
 public enum UniqueIdType {
-	
+
 	/** First byte for rows that act as counters */
 	CounterPlaceholder((byte) 0x00),
 
@@ -23,7 +23,10 @@ public enum UniqueIdType {
 	SiteKey((byte) 0x01), SiteValue((byte) 0x02),
 
 	/** Key and value for device UUIDs */
-	DeviceKey((byte) 0x03), DeviceValue((byte) 0x04);
+	DeviceKey((byte) 0x03), DeviceValue((byte) 0x04),
+
+	/** Key and value for zone UUIDs */
+	ZoneKey((byte) 0x05), ZoneValue((byte) 0x06);
 
 	/** Type indicator */
 	private byte indicator;
