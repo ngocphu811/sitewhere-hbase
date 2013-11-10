@@ -15,6 +15,8 @@ import org.apache.log4j.Logger;
 
 import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.model.HBaseDevice;
+import com.sitewhere.hbase.model.HBaseDeviceAssignment;
+import com.sitewhere.hbase.model.HBaseDeviceEvent;
 import com.sitewhere.hbase.model.HBaseSite;
 import com.sitewhere.hbase.model.HBaseZone;
 import com.sitewhere.hbase.uid.IdManager;
@@ -124,10 +126,19 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#getCurrentDeviceAssignment(com.sitewhere
+	 * .spi.device.IDevice)
+	 */
 	public IDeviceAssignment getCurrentDeviceAssignment(IDevice device) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		String token = HBaseDevice.getCurrentAssignmentId(hbase, device.getHardwareId());
+		if (token == null) {
+			return null;
+		}
+		return HBaseDeviceAssignment.getDeviceAssignment(hbase, token);
 	}
 
 	@Override
@@ -149,17 +160,27 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#createDeviceAssignment(com.sitewhere
+	 * .spi.device.request.IDeviceAssignmentCreateRequest)
+	 */
 	public IDeviceAssignment createDeviceAssignment(IDeviceAssignmentCreateRequest request)
 			throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceAssignment.createDeviceAssignment(hbase, request);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#getDeviceAssignmentByToken(java.lang
+	 * .String)
+	 */
 	public IDeviceAssignment getDeviceAssignmentByToken(String token) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceAssignment.getDeviceAssignment(hbase, token);
 	}
 
 	@Override
@@ -168,16 +189,26 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#getDeviceForAssignment(com.sitewhere
+	 * .spi.device.IDeviceAssignment)
+	 */
 	public IDevice getDeviceForAssignment(IDeviceAssignment assignment) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDevice.getDeviceByHardwareId(hbase, assignment.getDeviceHardwareId());
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#getSiteForAssignment(com.sitewhere.spi
+	 * .device.IDeviceAssignment)
+	 */
 	public ISite getSiteForAssignment(IDeviceAssignment assignment) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseSite.getSiteByToken(hbase, assignment.getSiteToken());
 	}
 
 	@Override
@@ -194,8 +225,14 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
-	public IDeviceAssignment updateDeviceAssignmentLocation(String token, String locationId)
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#updateDeviceAssignmentLocation(java.
+	 * lang.String, com.sitewhere.spi.device.IDeviceLocation)
+	 */
+	public IDeviceAssignment updateDeviceAssignmentLocation(String token, IDeviceLocation location)
 			throws SiteWhereException {
 		// TODO Auto-generated method stub
 		return null;
@@ -235,11 +272,17 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#addDeviceMeasurements(com.sitewhere.
+	 * spi.device.IDeviceAssignment,
+	 * com.sitewhere.spi.device.request.IDeviceMeasurementsCreateRequest)
+	 */
 	public IDeviceMeasurements addDeviceMeasurements(IDeviceAssignment assignment,
 			IDeviceMeasurementsCreateRequest measurements) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceEvent.createDeviceMeasurements(hbase, assignment, measurements);
 	}
 
 	@Override

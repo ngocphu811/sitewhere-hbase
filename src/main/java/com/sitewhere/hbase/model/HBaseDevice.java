@@ -46,6 +46,9 @@ public class HBaseDevice {
 	/** Column qualifier for site JSON content */
 	public static final byte[] JSON_CONTENT = Bytes.UTF8("json");
 
+	/** Column qualifier for current device assignment */
+	public static final byte[] CURRENT_ASSIGNMENT = Bytes.UTF8("assignment");
+
 	/**
 	 * Create a new device.
 	 * 
@@ -121,6 +124,60 @@ public class HBaseDevice {
 		} catch (Throwable e) {
 			throw new SiteWhereException("Unable to parse device JSON.", e);
 		}
+	}
+
+	/**
+	 * Get the current device assignment id if assigned or null if not assigned.
+	 * 
+	 * @param hbase
+	 * @param hardwareId
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static String getCurrentAssignmentId(HBaseConnectivity hbase, String hardwareId)
+			throws SiteWhereException {
+		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
+		if (deviceId == null) {
+			return null;
+		}
+		byte[] primary = getPrimaryRowkey(deviceId);
+		GetRequest request = new GetRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary).family(
+				SiteWhereHBaseConstants.FAMILY_ID).qualifier(CURRENT_ASSIGNMENT);
+		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
+				"Unable to load current device assignment value.");
+		if (results.isEmpty()) {
+			return null;
+		} else if (results.size() == 1) {
+			return new String(results.get(0).value());
+		} else {
+			throw new SiteWhereException("Expected one current assignment entry for device and found: "
+					+ results.size());
+		}
+	}
+
+	/**
+	 * Set the current device assignment for a device.
+	 * 
+	 * @param hbase
+	 * @param hardwareId
+	 * @param assignmentToken
+	 * @throws SiteWhereException
+	 */
+	public static void setDeviceAssignment(HBaseConnectivity hbase, String hardwareId, String assignmentToken)
+			throws SiteWhereException {
+		String existing = getCurrentAssignmentId(hbase, hardwareId);
+		if (existing != null) {
+			throw new SiteWhereSystemException(ErrorCode.DeviceAlreadyAssigned, ErrorLevel.ERROR);
+		}
+
+		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
+		if (deviceId == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
+		}
+		byte[] primary = getPrimaryRowkey(deviceId);
+		PutRequest put = new PutRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
+				SiteWhereHBaseConstants.FAMILY_ID, CURRENT_ASSIGNMENT, assignmentToken.getBytes());
+		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment.");
 	}
 
 	/**

@@ -58,13 +58,11 @@ public class HBaseZone {
 	public static IZone createZone(HBaseConnectivity hbase, ISite site, IZoneCreateRequest request)
 			throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(site.getToken());
-		byte[] baserow = HBaseSite.getZoneRowKey(siteId);
+		if (siteId == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidSiteToken, ErrorLevel.ERROR);
+		}
 		Long zoneId = HBaseSite.allocateNextZoneId(hbase, siteId);
-		byte[] zoneIdBytes = getZoneIdentifier(zoneId);
-		ByteBuffer buffer = ByteBuffer.allocate(baserow.length + zoneIdBytes.length);
-		buffer.put(baserow);
-		buffer.put(zoneIdBytes);
-		byte[] rowkey = buffer.array();
+		byte[] rowkey = getPrimaryRowkey(siteId, zoneId);
 
 		// Associate new UUID with zone row key.
 		String uuid = IdManager.getInstance().getZoneKeys().createUniqueId(rowkey);
@@ -130,6 +128,21 @@ public class HBaseZone {
 		} catch (Throwable e) {
 			throw new SiteWhereException("Unable to parse zone JSON.", e);
 		}
+	}
+
+	/**
+	 * Get primary row key for a given zone.
+	 * 
+	 * @param siteId
+	 * @return
+	 */
+	public static byte[] getPrimaryRowkey(Long siteId, Long zoneId) {
+		byte[] baserow = HBaseSite.getZoneRowKey(siteId);
+		byte[] zoneIdBytes = getZoneIdentifier(zoneId);
+		ByteBuffer buffer = ByteBuffer.allocate(baserow.length + zoneIdBytes.length);
+		buffer.put(baserow);
+		buffer.put(zoneIdBytes);
+		return buffer.array();
 	}
 
 	/**

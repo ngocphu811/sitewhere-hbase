@@ -24,6 +24,7 @@ import org.hbase.async.Scanner;
 
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.model.HBasePersistence;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -88,12 +89,8 @@ public abstract class UniqueIdMap<N, V> {
 		byte[] valueBytes = convertValue(value);
 		PutRequest namePut = new PutRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, nameBuffer.array(),
 				SiteWhereHBaseConstants.FAMILY_ID, VALUE_QUAL, valueBytes);
-		try {
-			hbase.getClient().put(namePut).joinUninterruptibly();
-			nameToValue.put(name, value);
-		} catch (Exception e) {
-			throw new SiteWhereException("Unable to store name mapping in UID table.", e);
-		}
+		HBasePersistence.syncPut(hbase, namePut, "Unable to store value mapping in UID table.");
+		nameToValue.put(name, value);
 	}
 
 	/**
@@ -111,12 +108,8 @@ public abstract class UniqueIdMap<N, V> {
 		byte[] nameBytes = convertName(name);
 		PutRequest valuePut = new PutRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, valueBuffer.array(),
 				SiteWhereHBaseConstants.FAMILY_ID, VALUE_QUAL, nameBytes);
-		try {
-			hbase.getClient().put(valuePut).joinUninterruptibly();
-			valueToName.put(value, name);
-		} catch (Exception e) {
-			throw new SiteWhereException("Unable to store value mapping in UID table.", e);
-		}
+		HBasePersistence.syncPut(hbase, valuePut, "Unable to store value mapping in UID table.");
+		valueToName.put(value, name);
 	}
 
 	/**
@@ -187,6 +180,10 @@ public abstract class UniqueIdMap<N, V> {
 		V result = nameToValue.get(name);
 		if (result == null) {
 			result = getValueFromTable(name);
+			if (result != null) {
+				nameToValue.put(name, result);
+				valueToName.put(result, name);
+			}
 		}
 		return result;
 	}
@@ -226,6 +223,10 @@ public abstract class UniqueIdMap<N, V> {
 		N result = valueToName.get(value);
 		if (result == null) {
 			result = getNameFromTable(value);
+			if (result != null) {
+				nameToValue.put(result, value);
+				valueToName.put(value, result);
+			}
 		}
 		return result;
 	}

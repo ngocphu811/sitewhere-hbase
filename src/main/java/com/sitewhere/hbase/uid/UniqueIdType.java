@@ -26,7 +26,10 @@ public enum UniqueIdType {
 	DeviceKey((byte) 0x03), DeviceValue((byte) 0x04),
 
 	/** Key and value for zone UUIDs */
-	ZoneKey((byte) 0x05), ZoneValue((byte) 0x06);
+	ZoneKey((byte) 0x05), ZoneValue((byte) 0x06),
+
+	/** Key and value for assignment UUIDs */
+	DeviceAssignmentKey((byte) 0x07), DeviceAssignmentValue((byte) 0x08);
 
 	/** Type indicator */
 	private byte indicator;

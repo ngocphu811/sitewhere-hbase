@@ -46,6 +46,7 @@ public class HBaseConnectivity {
 	 */
 	public void start(String quorum) throws SiteWhereException {
 		setClient(new HBaseClient(quorum));
+		getClient().setFlushInterval((short) 250);
 		try {
 			Configuration config = HBaseConfiguration.create();
 			config.set("hbase.zookeeper.quorum", quorum);

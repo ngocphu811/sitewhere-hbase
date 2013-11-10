@@ -52,6 +52,7 @@ public class HBasePersistence {
 	public static Object syncPut(HBaseConnectivity hbase, PutRequest request, String errorMessage)
 			throws SiteWhereException {
 		try {
+			request.setBufferable(false);
 			return hbase.getClient().put(request).joinUninterruptibly();
 		} catch (Exception e) {
 			throw new SiteWhereException(errorMessage, e);

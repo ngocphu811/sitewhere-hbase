@@ -31,6 +31,9 @@ public class IdManager {
 	/** Manager for zone ids */
 	private UuidRowKeyMap zoneKeys;
 
+	/** Manager for device assignment ids */
+	private UuidRowKeyMap assignmentKeys;
+
 	private IdManager() {
 	}
 
@@ -54,6 +57,9 @@ public class IdManager {
 		deviceKeys.refresh();
 		zoneKeys = new UuidRowKeyMap(hbase, UniqueIdType.ZoneKey, UniqueIdType.ZoneValue);
 		zoneKeys.refresh();
+		assignmentKeys = new UuidRowKeyMap(hbase, UniqueIdType.DeviceAssignmentKey,
+				UniqueIdType.DeviceAssignmentValue);
+		assignmentKeys.refresh();
 	}
 
 	public UnqiueIdCounterMap getSiteKeys() {
@@ -78,5 +84,13 @@ public class IdManager {
 
 	protected void setZoneKeys(UuidRowKeyMap zoneKeys) {
 		this.zoneKeys = zoneKeys;
+	}
+
+	public UuidRowKeyMap getAssignmentKeys() {
+		return assignmentKeys;
+	}
+
+	public void setAssignmentKeys(UuidRowKeyMap assignmentKeys) {
+		this.assignmentKeys = assignmentKeys;
 	}
 }

@@ -145,6 +145,27 @@ public class HBaseSite {
 	}
 
 	/**
+	 * Allocate the next assignment id and return the new value. (Each id is less than the
+	 * last)
+	 * 
+	 * @param hbase
+	 * @param siteId
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static Long allocateNextAssignmentId(HBaseConnectivity hbase, Long siteId)
+			throws SiteWhereException {
+		byte[] primary = getPrimaryRowkey(siteId);
+		AtomicIncrementRequest request = new AtomicIncrementRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME,
+				primary, SiteWhereHBaseConstants.FAMILY_ID, ASSIGNMENT_COUNTER, -1);
+		try {
+			return hbase.getClient().atomicIncrement(request).joinUninterruptibly();
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to allocate next assignment id.", e);
+		}
+	}
+
+	/**
 	 * Get the unique site identifier based on the long value associated with the site
 	 * UUID. This will be a subset of the full 8-bit long value.
 	 * 
@@ -166,9 +187,8 @@ public class HBaseSite {
 	 */
 	public static byte[] getPrimaryRowkey(Long siteId) {
 		byte[] sid = getSiteIdentifier(siteId);
-		ByteBuffer rowkey = ByteBuffer.allocate(sid.length + 1);
+		ByteBuffer rowkey = ByteBuffer.allocate(sid.length);
 		rowkey.put(sid);
-		rowkey.put(SiteRecordType.Primary.getType());
 		return rowkey.array();
 	}
 
@@ -183,6 +203,20 @@ public class HBaseSite {
 		ByteBuffer rowkey = ByteBuffer.allocate(sid.length + 1);
 		rowkey.put(sid);
 		rowkey.put(SiteRecordType.Zone.getType());
+		return rowkey.array();
+	}
+
+	/**
+	 * Get device assignment row key for a given site.
+	 * 
+	 * @param siteId
+	 * @return
+	 */
+	public static byte[] getAssignmentRowKey(Long siteId) {
+		byte[] sid = getSiteIdentifier(siteId);
+		ByteBuffer rowkey = ByteBuffer.allocate(sid.length + 1);
+		rowkey.put(sid);
+		rowkey.put(SiteRecordType.Assignment.getType());
 		return rowkey.array();
 	}
 }
