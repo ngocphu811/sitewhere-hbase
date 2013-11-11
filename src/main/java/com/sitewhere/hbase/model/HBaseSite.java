@@ -219,4 +219,18 @@ public class HBaseSite {
 		rowkey.put(SiteRecordType.Assignment.getType());
 		return rowkey.array();
 	}
+
+	/**
+	 * Get key that marks finish of assignment records for a site.
+	 * 
+	 * @param siteId
+	 * @return
+	 */
+	public static byte[] getAfterAssignmentRowKey(Long siteId) {
+		byte[] sid = getSiteIdentifier(siteId);
+		ByteBuffer rowkey = ByteBuffer.allocate(sid.length + 1);
+		rowkey.put(sid);
+		rowkey.put(SiteRecordType.End.getType());
+		return rowkey.array();
+	}
 }

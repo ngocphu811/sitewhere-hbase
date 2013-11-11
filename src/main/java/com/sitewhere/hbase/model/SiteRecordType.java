@@ -23,7 +23,10 @@ public enum SiteRecordType {
 	Zone((byte) 0x01),
 
 	/** Assignment record */
-	Assignment((byte) 0x02);
+	Assignment((byte) 0x02),
+
+	/** Assignment record */
+	End((byte) 0x03);
 
 	/** Type indicator */
 	private byte type;

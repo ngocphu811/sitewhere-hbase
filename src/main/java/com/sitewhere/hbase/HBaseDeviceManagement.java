@@ -20,6 +20,7 @@ import com.sitewhere.hbase.model.HBaseDeviceEvent;
 import com.sitewhere.hbase.model.HBaseSite;
 import com.sitewhere.hbase.model.HBaseZone;
 import com.sitewhere.hbase.uid.IdManager;
+import com.sitewhere.rest.model.device.DeviceEventBatchResponse;
 import com.sitewhere.rest.service.search.SearchResults;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.common.IDateRangeSearchCriteria;
@@ -238,11 +239,27 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#addDeviceEventBatch(java.lang.String,
+	 * com.sitewhere.spi.device.IDeviceEventBatch)
+	 */
 	public IDeviceEventBatchResponse addDeviceEventBatch(String assignmentToken, IDeviceEventBatch batch)
 			throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		DeviceEventBatchResponse response = new DeviceEventBatchResponse();
+		IDeviceAssignment assignment = getDeviceAssignmentByToken(assignmentToken);
+		for (IDeviceMeasurementsCreateRequest measurements : batch.getMeasurements()) {
+			response.getCreatedMeasurements().add(addDeviceMeasurements(assignment, measurements));
+		}
+		for (IDeviceLocationCreateRequest location : batch.getLocations()) {
+			response.getCreatedLocations().add(addDeviceLocation(assignment, location));
+		}
+		for (IDeviceAlertCreateRequest alert : batch.getAlerts()) {
+			response.getCreatedAlerts().add(addDeviceAlert(assignment, alert));
+		}
+		return response;
 	}
 
 	@Override
@@ -285,14 +302,25 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDeviceEvent.createDeviceMeasurements(hbase, assignment, measurements);
 	}
 
-	@Override
-	public SearchResults<IDeviceMeasurements> listDeviceMeasurements(String siteToken,
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#listDeviceMeasurements(java.lang.String,
+	 * com.sitewhere.spi.common.IDateRangeSearchCriteria)
+	 */
+	public SearchResults<IDeviceMeasurements> listDeviceMeasurements(String token,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceEvent.listDeviceMeasurements(hbase, token, criteria);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#listDeviceMeasurementsForSite(java.lang
+	 * .String, com.sitewhere.spi.common.IDateRangeSearchCriteria)
+	 */
 	public SearchResults<IDeviceMeasurements> listDeviceMeasurementsForSite(String siteToken,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		// TODO Auto-generated method stub
@@ -306,18 +334,29 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#addDeviceLocation(com.sitewhere.spi.
+	 * device.IDeviceAssignment,
+	 * com.sitewhere.spi.device.request.IDeviceLocationCreateRequest)
+	 */
 	public IDeviceLocation addDeviceLocation(IDeviceAssignment assignment,
 			IDeviceLocationCreateRequest request) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceEvent.createDeviceLocation(hbase, assignment, request);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#listDeviceLocations(java.lang.String,
+	 * com.sitewhere.spi.common.IDateRangeSearchCriteria)
+	 */
 	public SearchResults<IDeviceLocation> listDeviceLocations(String assignmentToken,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceEvent.listDeviceLocations(hbase, assignmentToken, criteria);
 	}
 
 	@Override
@@ -341,18 +380,27 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#addDeviceAlert(com.sitewhere.spi.device
+	 * .IDeviceAssignment, com.sitewhere.spi.device.request.IDeviceAlertCreateRequest)
+	 */
 	public IDeviceAlert addDeviceAlert(IDeviceAssignment assignment, IDeviceAlertCreateRequest request)
 			throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceEvent.createDeviceAlert(hbase, assignment, request);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#listDeviceAlerts(java.lang.String,
+	 * com.sitewhere.spi.common.IDateRangeSearchCriteria)
+	 */
 	public SearchResults<IDeviceAlert> listDeviceAlerts(String assignmentToken,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceEvent.listDeviceAlerts(hbase, assignmentToken, criteria);
 	}
 
 	@Override
