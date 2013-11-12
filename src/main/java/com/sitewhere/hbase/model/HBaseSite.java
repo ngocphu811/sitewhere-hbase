@@ -24,8 +24,6 @@ import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
-import com.sitewhere.rest.model.common.MetadataEntry;
-import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.Site;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.SiteWhereSystemException;
@@ -65,17 +63,8 @@ public class HBaseSite {
 		Long value = IdManager.getInstance().getSiteKeys().getValue(uuid);
 		byte[] primary = getPrimaryRowkey(value);
 
-		// Prepare object for JSON serialization.
-		Site site = new Site();
-		site.setName(request.getName());
-		site.setDescription(request.getDescription());
-		site.setImageUrl(request.getImageUrl());
-		site.setMapType(request.getMapType());
-		site.setToken(uuid);
-
-		SiteWherePersistence.initializeEntityMetadata(site);
-		MetadataProvider.copy(request, site);
-		MetadataProvider.copy(request.getMapMetadata(), site.getMapMetadata());
+		// Use common logic so all backend implementations work the same.
+		Site site = SiteWherePersistence.siteCreateLogic(request, uuid);
 
 		// Create primary site record.
 		byte[] json = MarshalUtils.marshalJson(site);
@@ -135,17 +124,8 @@ public class HBaseSite {
 			throw new SiteWhereSystemException(ErrorCode.InvalidSiteToken, ErrorLevel.ERROR);
 		}
 
-		updated.setName(request.getName());
-		updated.setDescription(request.getDescription());
-		updated.setImageUrl(request.getImageUrl());
-		updated.setMapType(request.getMapType());
-		updated.setMetadata(new ArrayList<MetadataEntry>());
-		updated.setMapMetadata(new MetadataProvider());
-
-		MetadataProvider.copy(request, updated);
-		MetadataProvider.copy(request.getMapMetadata(), updated.getMapMetadata());
-
-		SiteWherePersistence.setUpdatedEntityMetadata(updated);
+		// Use common update logic so that backend implemetations act the same way.
+		SiteWherePersistence.siteUpdateLogic(request, updated);
 
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(token);
 		byte[] rowkey = getPrimaryRowkey(siteId);

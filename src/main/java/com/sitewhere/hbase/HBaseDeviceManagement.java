@@ -477,10 +477,14 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#updateSite(java.lang.String,
+	 * com.sitewhere.spi.device.request.ISiteCreateRequest)
+	 */
 	public ISite updateSite(String siteToken, ISiteCreateRequest request) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseSite.updateSite(hbase, siteToken, request);
 	}
 
 	/*
