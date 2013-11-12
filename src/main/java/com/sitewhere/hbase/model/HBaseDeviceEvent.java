@@ -23,7 +23,6 @@ import org.hbase.async.Scanner;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sitewhere.core.device.Utils;
 import com.sitewhere.hbase.DataUtils;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
@@ -85,7 +84,6 @@ public class HBaseDeviceEvent {
 		DeviceMeasurements measurements = new DeviceMeasurements();
 		measurements.setSiteToken(assignment.getSiteToken());
 		measurements.setDeviceAssignmentToken(assignment.getToken());
-		measurements.setAssetName(Utils.getAssetNameForAssignment(assignment));
 		measurements.setEventDate(request.getEventDate());
 		measurements.setReceivedDate(new Date());
 		for (IMeasurementEntry entry : request.getMeasurements()) {
@@ -164,7 +162,6 @@ public class HBaseDeviceEvent {
 		DeviceLocation location = new DeviceLocation();
 		location.setSiteToken(assignment.getSiteToken());
 		location.setDeviceAssignmentToken(assignment.getToken());
-		location.setAssetName(Utils.getAssetNameForAssignment(assignment));
 		location.setEventDate(request.getEventDate());
 		location.setReceivedDate(new Date());
 		location.setLatitude(request.getLatitude());
@@ -243,7 +240,6 @@ public class HBaseDeviceEvent {
 		DeviceAlert alert = new DeviceAlert();
 		alert.setSiteToken(assignment.getSiteToken());
 		alert.setDeviceAssignmentToken(assignment.getToken());
-		alert.setAssetName(Utils.getAssetNameForAssignment(assignment));
 		alert.setEventDate(request.getEventDate());
 		alert.setReceivedDate(new Date());
 		alert.setSource(AlertSource.Device);

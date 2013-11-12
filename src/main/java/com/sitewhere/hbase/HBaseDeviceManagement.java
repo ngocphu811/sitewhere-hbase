@@ -255,10 +255,10 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 	 * 
 	 * @see
 	 * com.sitewhere.spi.device.IDeviceManagement#updateDeviceAssignmentLocation(java.
-	 * lang.String, com.sitewhere.spi.device.IDeviceLocation)
+	 * lang.String, com.sitewhere.spi.device.request.IDeviceLocationCreateRequest)
 	 */
-	public IDeviceAssignment updateDeviceAssignmentLocation(String token, IDeviceLocation location)
-			throws SiteWhereException {
+	public IDeviceAssignment updateDeviceAssignmentLocation(String token,
+			IDeviceLocationCreateRequest location) throws SiteWhereException {
 		// TODO Auto-generated method stub
 		return null;
 	}
