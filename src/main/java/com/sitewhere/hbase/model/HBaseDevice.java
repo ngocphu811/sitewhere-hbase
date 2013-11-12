@@ -352,6 +352,29 @@ public class HBaseDevice {
 	}
 
 	/**
+	 * Removes the device assignment row if present.
+	 * 
+	 * @param hbase
+	 * @param hardwareId
+	 * @throws SiteWhereException
+	 */
+	public static void removeDeviceAssignment(HBaseConnectivity hbase, String hardwareId)
+			throws SiteWhereException {
+		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
+		if (deviceId == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
+		}
+		byte[] primary = getPrimaryRowkey(deviceId);
+		DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
+				SiteWhereHBaseConstants.FAMILY_ID, CURRENT_ASSIGNMENT);
+		try {
+			hbase.getClient().delete(delete).joinUninterruptibly();
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to delete device assignment indicator for device.", e);
+		}
+	}
+
+	/**
 	 * Get the unique device identifier based on the long value associated with the device
 	 * UUID. This will be a subset of the full 8-bit long value.
 	 * 

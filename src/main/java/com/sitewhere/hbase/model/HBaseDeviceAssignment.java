@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Date;
 
 import org.hbase.async.Bytes;
+import org.hbase.async.DeleteRequest;
 import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.DeviceAssignment;
@@ -113,7 +115,7 @@ public class HBaseDeviceAssignment {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDeviceAssignment getDeviceAssignment(HBaseConnectivity hbase, String token)
+	public static DeviceAssignment getDeviceAssignment(HBaseConnectivity hbase, String token)
 			throws SiteWhereException {
 		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		if (rowkey == null) {
@@ -135,6 +137,47 @@ public class HBaseDeviceAssignment {
 		} catch (Throwable e) {
 			throw new SiteWhereException("Unable to parse device assignment JSON.", e);
 		}
+	}
+
+	/**
+	 * Delete a device assignmant based on token. Depending on 'force' the record will be
+	 * physically deleted or a marker qualifier will be added to mark it as deleted. Note:
+	 * Physically deleting an assignment can leave orphaned references and should not be
+	 * done in a production system!
+	 * 
+	 * @param hbase
+	 * @param token
+	 * @param force
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static IDeviceAssignment deleteDeviceAssignment(HBaseConnectivity hbase, String token,
+			boolean force) throws SiteWhereException {
+		byte[] assnId = IdManager.getInstance().getAssignmentKeys().getValue(token);
+		if (assnId == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidDeviceAssignmentToken, ErrorLevel.ERROR);
+		}
+		DeviceAssignment existing = getDeviceAssignment(hbase, token);
+		HBaseDevice.removeDeviceAssignment(hbase, existing.getDeviceHardwareId());
+		if (force) {
+			IdManager.getInstance().getAssignmentKeys().delete(token);
+			DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, assnId);
+			try {
+				hbase.getClient().delete(delete).joinUninterruptibly();
+			} catch (Exception e) {
+				throw new SiteWhereException("Unable to delete device.", e);
+			}
+		} else {
+			byte[] marker = { (byte) 0x01 };
+			existing.setDeleted(true);
+			String updated = MarshalUtils.marshalJson(existing);
+			byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, SiteWhereHBaseConstants.DELETED };
+			byte[][] values = { updated.getBytes(), marker };
+			PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, assnId,
+					SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for device assignment.");
+		}
+		return existing;
 	}
 
 	/**

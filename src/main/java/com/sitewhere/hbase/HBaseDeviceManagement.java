@@ -203,10 +203,15 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDeviceAssignment.getDeviceAssignment(hbase, token);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#deleteDeviceAssignment(java.lang.String,
+	 * boolean)
+	 */
 	public IDeviceAssignment deleteDeviceAssignment(String token, boolean force) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceAssignment.deleteDeviceAssignment(hbase, token, force);
 	}
 
 	/*
