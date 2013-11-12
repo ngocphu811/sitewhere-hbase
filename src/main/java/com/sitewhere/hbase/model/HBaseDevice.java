@@ -22,7 +22,7 @@ import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 import org.hbase.async.Scanner;
 
-import com.sitewhere.dao.mongodb.MongoPersistence;
+import com.sitewhere.core.device.SiteWherePersistence;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
 import com.sitewhere.hbase.common.MarshalUtils;
@@ -78,7 +78,7 @@ public class HBaseDevice {
 		newDevice.setComments(request.getComments());
 
 		MetadataProvider.copy(request, newDevice);
-		MongoPersistence.initializeEntityMetadata(newDevice);
+		SiteWherePersistence.initializeEntityMetadata(newDevice);
 
 		return putDeviceJson(hbase, newDevice);
 	}
@@ -113,7 +113,7 @@ public class HBaseDevice {
 			updatedDevice.getMetadata().clear();
 			MetadataProvider.copy(request, updatedDevice);
 		}
-		MongoPersistence.setUpdatedEntityMetadata(updatedDevice);
+		SiteWherePersistence.setUpdatedEntityMetadata(updatedDevice);
 
 		return putDeviceJson(hbase, updatedDevice);
 	}

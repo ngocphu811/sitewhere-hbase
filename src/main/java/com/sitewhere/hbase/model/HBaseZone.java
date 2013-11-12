@@ -19,6 +19,7 @@ import org.hbase.async.PutRequest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sitewhere.core.device.SiteWherePersistence;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
 import com.sitewhere.hbase.uid.IdManager;
@@ -73,7 +74,7 @@ public class HBaseZone {
 		zone.setFillColor(request.getFillColor());
 		zone.setOpacity(request.getOpacity());
 
-		HBasePersistence.initializeEntityMetadata(zone);
+		SiteWherePersistence.initializeEntityMetadata(zone);
 		MetadataProvider.copy(request, zone);
 
 		for (ILocation coordinate : request.getCoordinates()) {

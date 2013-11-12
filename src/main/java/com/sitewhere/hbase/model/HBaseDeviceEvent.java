@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.hbase.DataUtils;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.DeviceAlert;
@@ -159,6 +160,26 @@ public class HBaseDeviceEvent {
 		byte[] rowkey = getRowKey(assnKey, time);
 		byte[] qualifier = getQualifier(DeviceAssignmentRecordType.Location, time);
 
+		DeviceLocation location = createDeviceLocationForRequest(assignment, request);
+		byte[] json = MarshalUtils.marshalJson(location);
+
+		// Create device location record. Fire and forget so errors only hit callback.
+		PutRequest put = new PutRequest(SiteWhereHBaseConstants.EVENTS_TABLE_NAME, rowkey,
+				SiteWhereHBaseConstants.FAMILY_ID, qualifier, json);
+		hbase.getClient().put(put).addErrback(new PutFailedCallback());
+
+		return location;
+	}
+
+	/**
+	 * Create a device location for the given create request.
+	 * 
+	 * @param assignment
+	 * @param request
+	 * @return
+	 */
+	public static DeviceLocation createDeviceLocationForRequest(IDeviceAssignment assignment,
+			IDeviceLocationCreateRequest request) {
 		DeviceLocation location = new DeviceLocation();
 		location.setSiteToken(assignment.getSiteToken());
 		location.setDeviceAssignmentToken(assignment.getToken());
@@ -168,21 +189,6 @@ public class HBaseDeviceEvent {
 		location.setLongitude(request.getLongitude());
 		location.setElevation(request.getElevation());
 		MetadataProvider.copy(request, location);
-
-		// Serialize as JSON.
-		ObjectMapper mapper = new ObjectMapper();
-		String json = null;
-		try {
-			json = mapper.writeValueAsString(location);
-		} catch (JsonProcessingException e) {
-			throw new SiteWhereException("Could not marshal device location as JSON.", e);
-		}
-
-		// Create device location record. Fire and forget so errors only hit callback.
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.EVENTS_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, qualifier, json.getBytes());
-		hbase.getClient().put(put).addErrback(new PutFailedCallback());
-
 		return location;
 	}
 

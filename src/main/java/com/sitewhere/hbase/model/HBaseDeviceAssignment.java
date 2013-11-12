@@ -19,6 +19,7 @@ import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 
+import com.sitewhere.core.device.SiteWherePersistence;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
 import com.sitewhere.hbase.common.MarshalUtils;
@@ -26,12 +27,14 @@ import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.common.MetadataEntry;
 import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.DeviceAssignment;
+import com.sitewhere.rest.model.device.DeviceLocation;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.SiteWhereSystemException;
 import com.sitewhere.spi.common.IMetadataProvider;
 import com.sitewhere.spi.device.DeviceAssignmentStatus;
 import com.sitewhere.spi.device.IDeviceAssignment;
 import com.sitewhere.spi.device.request.IDeviceAssignmentCreateRequest;
+import com.sitewhere.spi.device.request.IDeviceLocationCreateRequest;
 import com.sitewhere.spi.error.ErrorCode;
 import com.sitewhere.spi.error.ErrorLevel;
 
@@ -47,6 +50,9 @@ public class HBaseDeviceAssignment {
 
 	/** Qualifier for assignment status */
 	public static final byte[] ASSIGNMENT_STATUS = Bytes.UTF8("status");
+
+	/** Qualifier for last location */
+	public static final byte[] LAST_LOCATION = Bytes.UTF8("location");
 
 	/**
 	 * Create a new device assignment.
@@ -87,7 +93,7 @@ public class HBaseDeviceAssignment {
 		newAssignment.setActiveDate(new Date());
 		newAssignment.setStatus(DeviceAssignmentStatus.Active);
 
-		HBasePersistence.initializeEntityMetadata(newAssignment);
+		SiteWherePersistence.initializeEntityMetadata(newAssignment);
 		MetadataProvider.copy(request, newAssignment);
 
 		byte[] json = MarshalUtils.marshalJson(newAssignment);
@@ -144,13 +150,40 @@ public class HBaseDeviceAssignment {
 		DeviceAssignment updated = getDeviceAssignment(hbase, token);
 		updated.setMetadata(new ArrayList<MetadataEntry>());
 		MetadataProvider.copy(metadata, updated);
-		HBasePersistence.setUpdatedEntityMetadata(updated);
+		SiteWherePersistence.setUpdatedEntityMetadata(updated);
 
 		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		byte[] json = MarshalUtils.marshalJson(updated);
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
 				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
 		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment metadata.");
+		return updated;
+	}
+
+	/**
+	 * Update location associated with device assignment.
+	 * 
+	 * @param hbase
+	 * @param token
+	 * @param request
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static DeviceAssignment updateDeviceAssignmentLocation(HBaseConnectivity hbase, String token,
+			IDeviceLocationCreateRequest request) throws SiteWhereException {
+		DeviceAssignment updated = getDeviceAssignment(hbase, token);
+		DeviceLocation location = HBaseDeviceEvent.createDeviceLocationForRequest(updated, request);
+		updated.setLastLocation(location);
+		SiteWherePersistence.setUpdatedEntityMetadata(updated);
+
+		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
+		byte[] json = MarshalUtils.marshalJson(updated);
+		byte[] locJson = MarshalUtils.marshalJson(location);
+		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, LAST_LOCATION };
+		byte[][] values = { json, locJson };
+		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
+				SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment location.");
 		return updated;
 	}
 
@@ -167,7 +200,7 @@ public class HBaseDeviceAssignment {
 			DeviceAssignmentStatus status) throws SiteWhereException {
 		DeviceAssignment updated = getDeviceAssignment(hbase, token);
 		updated.setStatus(status);
-		HBasePersistence.setUpdatedEntityMetadata(updated);
+		SiteWherePersistence.setUpdatedEntityMetadata(updated);
 
 		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		byte[] json = MarshalUtils.marshalJson(updated);
@@ -192,7 +225,7 @@ public class HBaseDeviceAssignment {
 		DeviceAssignment updated = getDeviceAssignment(hbase, token);
 		updated.setStatus(DeviceAssignmentStatus.Released);
 		updated.setReleasedDate(new Date());
-		HBasePersistence.setUpdatedEntityMetadata(updated);
+		SiteWherePersistence.setUpdatedEntityMetadata(updated);
 
 		// Remove assignment reference from device.
 		HBaseDevice.removeDeviceAssignment(hbase, updated.getDeviceHardwareId());

@@ -18,16 +18,21 @@ import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sitewhere.core.device.SiteWherePersistence;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
+import com.sitewhere.rest.model.common.MetadataEntry;
 import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.Site;
 import com.sitewhere.spi.SiteWhereException;
+import com.sitewhere.spi.SiteWhereSystemException;
 import com.sitewhere.spi.device.ISite;
 import com.sitewhere.spi.device.request.ISiteCreateRequest;
+import com.sitewhere.spi.error.ErrorCode;
+import com.sitewhere.spi.error.ErrorLevel;
 
 /**
  * HBase specifics for dealing with SiteWhere sites.
@@ -68,23 +73,15 @@ public class HBaseSite {
 		site.setMapType(request.getMapType());
 		site.setToken(uuid);
 
-		HBasePersistence.initializeEntityMetadata(site);
+		SiteWherePersistence.initializeEntityMetadata(site);
 		MetadataProvider.copy(request, site);
 		MetadataProvider.copy(request.getMapMetadata(), site.getMapMetadata());
 
-		// Serialize as JSON.
-		ObjectMapper mapper = new ObjectMapper();
-		String json = null;
-		try {
-			json = mapper.writeValueAsString(site);
-		} catch (JsonProcessingException e) {
-			throw new SiteWhereException("Could not marshal site as JSON.", e);
-		}
-
 		// Create primary site record.
+		byte[] json = MarshalUtils.marshalJson(site);
 		byte[] maxLong = Bytes.fromLong(Long.MAX_VALUE);
 		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, ZONE_COUNTER, ASSIGNMENT_COUNTER };
-		byte[][] values = { json.getBytes(), maxLong, maxLong };
+		byte[][] values = { json, maxLong, maxLong };
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, primary,
 				SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to create site.");
@@ -100,7 +97,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static ISite getSiteByToken(HBaseConnectivity hbase, String token) throws SiteWhereException {
+	public static Site getSiteByToken(HBaseConnectivity hbase, String token) throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(token);
 		if (siteId == null) {
 			return null;
@@ -120,6 +117,43 @@ public class HBaseSite {
 		} catch (Throwable e) {
 			throw new SiteWhereException("Unable to parse site JSON.", e);
 		}
+	}
+
+	/**
+	 * Update information for an existing site.
+	 * 
+	 * @param hbase
+	 * @param token
+	 * @param request
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static Site updateSite(HBaseConnectivity hbase, String token, ISiteCreateRequest request)
+			throws SiteWhereException {
+		Site updated = getSiteByToken(hbase, token);
+		if (updated == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidSiteToken, ErrorLevel.ERROR);
+		}
+
+		updated.setName(request.getName());
+		updated.setDescription(request.getDescription());
+		updated.setImageUrl(request.getImageUrl());
+		updated.setMapType(request.getMapType());
+		updated.setMetadata(new ArrayList<MetadataEntry>());
+		updated.setMapMetadata(new MetadataProvider());
+
+		MetadataProvider.copy(request, updated);
+		MetadataProvider.copy(request.getMapMetadata(), updated.getMapMetadata());
+
+		SiteWherePersistence.setUpdatedEntityMetadata(updated);
+
+		Long siteId = IdManager.getInstance().getSiteKeys().getValue(token);
+		byte[] rowkey = getPrimaryRowkey(siteId);
+		byte[] json = MarshalUtils.marshalJson(updated);
+		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
+				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
+		HBasePersistence.syncPut(hbase, put, "Unable to update site.");
+		return updated;
 	}
 
 	/**

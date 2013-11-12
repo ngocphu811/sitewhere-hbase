@@ -10,7 +10,6 @@
 package com.sitewhere.hbase.model;
 
 import java.util.ArrayList;
-import java.util.Date;
 
 import org.hbase.async.DeleteRequest;
 import org.hbase.async.GetRequest;
@@ -18,8 +17,6 @@ import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 
 import com.sitewhere.hbase.HBaseConnectivity;
-import com.sitewhere.rest.model.common.MetadataProviderEntity;
-import com.sitewhere.security.LoginManager;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -28,29 +25,6 @@ import com.sitewhere.spi.SiteWhereException;
  * @author Derek
  */
 public class HBasePersistence {
-
-	/**
-	 * Initialize entity fields.
-	 * 
-	 * @param entity
-	 * @throws SiteWhereException
-	 */
-	public static void initializeEntityMetadata(MetadataProviderEntity entity) throws SiteWhereException {
-		entity.setCreatedDate(new Date());
-		entity.setCreatedBy(LoginManager.getCurrentlyLoggedInUser().getUsername());
-		entity.setDeleted(false);
-	}
-
-	/**
-	 * Set updated fields.
-	 * 
-	 * @param entity
-	 * @throws SiteWhereException
-	 */
-	public static void setUpdatedEntityMetadata(MetadataProviderEntity entity) throws SiteWhereException {
-		entity.setUpdatedDate(new Date());
-		entity.setUpdatedBy(LoginManager.getCurrentlyLoggedInUser().getUsername());
-	}
 
 	/**
 	 * Send a synchronous put to the server.
