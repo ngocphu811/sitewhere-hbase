@@ -27,6 +27,9 @@ public interface SiteWhereHBaseConstants {
 	/** Sites table name */
 	public static final byte[] SITES_TABLE_NAME = Bytes.UTF8("sw-sites");
 
+	/** Events table name */
+	public static final byte[] EVENTS_TABLE_NAME = Bytes.UTF8("sw-events");
+
 	/** Devices table name */
 	public static final byte[] DEVICES_TABLE_NAME = Bytes.UTF8("sw-devices");
 

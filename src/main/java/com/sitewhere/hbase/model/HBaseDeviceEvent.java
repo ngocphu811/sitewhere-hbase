@@ -103,7 +103,7 @@ public class HBaseDeviceEvent {
 		}
 
 		// Create device measurements record. Fire and forget so errors only hit callback.
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
+		PutRequest put = new PutRequest(SiteWhereHBaseConstants.EVENTS_TABLE_NAME, rowkey,
 				SiteWhereHBaseConstants.FAMILY_ID, qualifier, json.getBytes());
 		hbase.getClient().put(put).addErrback(new PutFailedCallback());
 
@@ -123,18 +123,23 @@ public class HBaseDeviceEvent {
 			String assnToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getEventRowsForAssignment(hbase, assnToken,
 				DeviceAssignmentRecordType.Measurement, criteria);
-		ObjectMapper mapper = new ObjectMapper();
-		List<IDeviceMeasurements> results = new ArrayList<IDeviceMeasurements>();
-		for (KeyValue column : matches) {
-			try {
-				DeviceMeasurements measurements = mapper.readValue(column.value(), DeviceMeasurements.class);
-				results.add(measurements);
-			} catch (Throwable e) {
-				LOGGER.error("Unable to marshal JSON to measurements object.", e);
-			}
-		}
-		Collections.sort(results, Collections.reverseOrder());
-		return new SearchResults<IDeviceMeasurements>(results);
+		return convertMatches(matches, DeviceMeasurements.class);
+	}
+
+	/**
+	 * List device measurements associated with a site.
+	 * 
+	 * @param hbase
+	 * @param siteToken
+	 * @param criteria
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static SearchResults<IDeviceMeasurements> listDeviceMeasurementsForSite(HBaseConnectivity hbase,
+			String siteToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
+		ArrayList<KeyValue> matches = getEventRowsForSite(hbase, siteToken,
+				DeviceAssignmentRecordType.Measurement, criteria);
+		return convertMatches(matches, DeviceMeasurements.class);
 	}
 
 	/**
@@ -177,7 +182,7 @@ public class HBaseDeviceEvent {
 		}
 
 		// Create device location record. Fire and forget so errors only hit callback.
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
+		PutRequest put = new PutRequest(SiteWhereHBaseConstants.EVENTS_TABLE_NAME, rowkey,
 				SiteWhereHBaseConstants.FAMILY_ID, qualifier, json.getBytes());
 		hbase.getClient().put(put).addErrback(new PutFailedCallback());
 
@@ -197,18 +202,23 @@ public class HBaseDeviceEvent {
 			String assnToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getEventRowsForAssignment(hbase, assnToken,
 				DeviceAssignmentRecordType.Location, criteria);
-		ObjectMapper mapper = new ObjectMapper();
-		List<IDeviceLocation> results = new ArrayList<IDeviceLocation>();
-		for (KeyValue column : matches) {
-			try {
-				DeviceLocation location = mapper.readValue(column.value(), DeviceLocation.class);
-				results.add(location);
-			} catch (Throwable e) {
-				LOGGER.error("Unable to marshal JSON to location object.", e);
-			}
-		}
-		Collections.sort(results, Collections.reverseOrder());
-		return new SearchResults<IDeviceLocation>(results);
+		return convertMatches(matches, DeviceLocation.class);
+	}
+
+	/**
+	 * List device locations associated with a site.
+	 * 
+	 * @param hbase
+	 * @param siteToken
+	 * @param criteria
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static SearchResults<IDeviceLocation> listDeviceLocationsForSite(HBaseConnectivity hbase,
+			String siteToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
+		ArrayList<KeyValue> matches = getEventRowsForSite(hbase, siteToken,
+				DeviceAssignmentRecordType.Location, criteria);
+		return convertMatches(matches, DeviceLocation.class);
 	}
 
 	/**
@@ -252,7 +262,7 @@ public class HBaseDeviceEvent {
 		}
 
 		// Create device alert record. Fire and forget so errors only hit callback.
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
+		PutRequest put = new PutRequest(SiteWhereHBaseConstants.EVENTS_TABLE_NAME, rowkey,
 				SiteWhereHBaseConstants.FAMILY_ID, qualifier, json.getBytes());
 		hbase.getClient().put(put).addErrback(new PutFailedCallback());
 
@@ -272,18 +282,23 @@ public class HBaseDeviceEvent {
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getEventRowsForAssignment(hbase, assnToken,
 				DeviceAssignmentRecordType.Alert, criteria);
-		ObjectMapper mapper = new ObjectMapper();
-		List<IDeviceAlert> results = new ArrayList<IDeviceAlert>();
-		for (KeyValue column : matches) {
-			try {
-				DeviceAlert alert = mapper.readValue(column.value(), DeviceAlert.class);
-				results.add(alert);
-			} catch (Throwable e) {
-				LOGGER.error("Unable to marshal JSON to alert object.", e);
-			}
-		}
-		Collections.sort(results, Collections.reverseOrder());
-		return new SearchResults<IDeviceAlert>(results);
+		return convertMatches(matches, DeviceAlert.class);
+	}
+
+	/**
+	 * List device alerts associated with a site.
+	 * 
+	 * @param hbase
+	 * @param siteToken
+	 * @param criteria
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static SearchResults<IDeviceAlert> listDeviceAlertsForSite(HBaseConnectivity hbase,
+			String siteToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
+		ArrayList<KeyValue> matches = getEventRowsForSite(hbase, siteToken,
+				DeviceAssignmentRecordType.Measurement, criteria);
+		return convertMatches(matches, DeviceAlert.class);
 	}
 
 	/**
@@ -304,7 +319,7 @@ public class HBaseDeviceEvent {
 		if (assnKey == null) {
 			throw new SiteWhereSystemException(ErrorCode.InvalidDeviceAssignmentToken, ErrorLevel.ERROR);
 		}
-		Scanner scanner = hbase.getClient().newScanner(SiteWhereHBaseConstants.SITES_TABLE_NAME);
+		Scanner scanner = hbase.getClient().newScanner(SiteWhereHBaseConstants.EVENTS_TABLE_NAME);
 		scanner.setFamily(SiteWhereHBaseConstants.FAMILY_ID);
 
 		// Note: Because time values are inverted, start and end keys are reversed.
@@ -395,7 +410,7 @@ public class HBaseDeviceEvent {
 		byte[] startPrefix = HBaseSite.getAssignmentRowKey(siteId);
 		byte[] afterPrefix = HBaseSite.getAfterAssignmentRowKey(siteId);
 
-		Scanner scanner = hbase.getClient().newScanner(SiteWhereHBaseConstants.SITES_TABLE_NAME);
+		Scanner scanner = hbase.getClient().newScanner(SiteWhereHBaseConstants.EVENTS_TABLE_NAME);
 		scanner.setFamily(SiteWhereHBaseConstants.FAMILY_ID);
 		scanner.setStartKey(startPrefix);
 		scanner.setStopKey(afterPrefix);
@@ -409,6 +424,15 @@ public class HBaseDeviceEvent {
 						if (key.length > 7) {
 							byte[] qual = column.qualifier();
 							if ((qual.length > 3) && (qual[3] == eventType.getType())) {
+								Date eventDate = getDateForEventKeyValue(column);
+								if ((criteria.getStartDate() != null)
+										&& (eventDate.before(criteria.getStartDate()))) {
+									continue;
+								}
+								if ((criteria.getEndDate() != null)
+										&& (eventDate.after(criteria.getEndDate()))) {
+									continue;
+								}
 								results.add(column);
 							}
 						}
@@ -420,6 +444,28 @@ public class HBaseDeviceEvent {
 			throw new SiteWhereException("Error retrieving event rows.", e);
 		}
 		return results;
+	}
+
+	/**
+	 * Converts matching rows to {@link SearchResults} for web service response.
+	 * 
+	 * @param matches
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	protected static <I, D> SearchResults<I> convertMatches(ArrayList<KeyValue> matches, Class<D> jsonType) {
+		ObjectMapper mapper = new ObjectMapper();
+		List<I> results = new ArrayList<I>();
+		for (KeyValue column : matches) {
+			try {
+				D json = mapper.readValue(column.value(), jsonType);
+				results.add((I) json);
+			} catch (Throwable e) {
+				LOGGER.error("Unable to read JSON value into event object.", e);
+			}
+		}
+		Collections.sort(results, Collections.reverseOrder());
+		return new SearchResults<I>(results);
 	}
 
 	/**

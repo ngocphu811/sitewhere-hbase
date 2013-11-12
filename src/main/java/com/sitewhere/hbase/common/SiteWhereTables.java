@@ -11,6 +11,7 @@ package com.sitewhere.hbase.common;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.log4j.Logger;
 
 import com.sitewhere.hbase.HBaseConnectivity;
@@ -34,13 +35,15 @@ public class SiteWhereTables {
 	 * @param tableName
 	 * @throws SiteWhereException
 	 */
-	public static void assureTable(HBaseConnectivity hbase, byte[] tableName) throws SiteWhereException {
+	public static void assureTable(HBaseConnectivity hbase, byte[] tableName, BloomType bloom)
+			throws SiteWhereException {
 		try {
 			String tnameStr = new String(tableName);
 			if (!hbase.getAdmin().tableExists(tableName)) {
 				LOGGER.info("Table '" + tnameStr + "' does not exist. Creating table...");
 				HTableDescriptor table = new HTableDescriptor(tableName);
 				HColumnDescriptor family = new HColumnDescriptor(SiteWhereHBaseConstants.FAMILY_ID);
+				family.setBloomFilterType(bloom);
 				table.addFamily(family);
 				hbase.getAdmin().createTable(table);
 				LOGGER.info("Table '" + tnameStr + "' created successfully.");

@@ -10,24 +10,28 @@
 package com.sitewhere.hbase.model;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.log4j.Logger;
 import org.hbase.async.Bytes;
 import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
+import org.hbase.async.Scanner;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.dao.mongodb.MongoPersistence;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.Device;
+import com.sitewhere.rest.service.search.SearchResults;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.SiteWhereSystemException;
+import com.sitewhere.spi.common.ISearchCriteria;
 import com.sitewhere.spi.device.IDevice;
 import com.sitewhere.spi.device.request.IDeviceCreateRequest;
 import com.sitewhere.spi.error.ErrorCode;
@@ -39,6 +43,9 @@ import com.sitewhere.spi.error.ErrorLevel;
  * @author Derek
  */
 public class HBaseDevice {
+
+	/** Static logger instance */
+	private static Logger LOGGER = Logger.getLogger(HBaseDevice.class);
 
 	/** Length of device identifier (subset of 8 byte long) */
 	public static final int DEVICE_IDENTIFIER_LENGTH = 4;
@@ -66,7 +73,6 @@ public class HBaseDevice {
 		}
 		Long value = IdManager.getInstance().getDeviceKeys().getNextCounterValue();
 		IdManager.getInstance().getDeviceKeys().create(request.getHardwareId(), value);
-		byte[] primary = getPrimaryRowkey(value);
 
 		Device newDevice = new Device();
 		newDevice.setAssetId(request.getAssetId());
@@ -76,21 +82,149 @@ public class HBaseDevice {
 		MetadataProvider.copy(request, newDevice);
 		MongoPersistence.initializeEntityMetadata(newDevice);
 
-		// Serialize as JSON.
-		ObjectMapper mapper = new ObjectMapper();
-		String json = null;
-		try {
-			json = mapper.writeValueAsString(newDevice);
-		} catch (JsonProcessingException e) {
-			throw new SiteWhereException("Could not marshal device as JSON.", e);
+		return putDeviceJson(hbase, newDevice);
+	}
+
+	/**
+	 * Update an existing device.
+	 * 
+	 * @param hbase
+	 * @param hardwareId
+	 * @param request
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static IDevice updateDevice(HBaseConnectivity hbase, String hardwareId,
+			IDeviceCreateRequest request) throws SiteWhereException {
+
+		// Can not update the hardware id on a device.
+		if ((request.getHardwareId() != null) && (!request.getHardwareId().equals(hardwareId))) {
+			throw new SiteWhereSystemException(ErrorCode.DeviceHardwareIdCanNotBeChanged, ErrorLevel.ERROR,
+					HttpServletResponse.SC_BAD_REQUEST);
 		}
+
+		// Copy any non-null fields.
+		Device updatedDevice = getDeviceByHardwareId(hbase, hardwareId);
+		if (request.getAssetId() != null) {
+			updatedDevice.setAssetId(request.getAssetId());
+		}
+		if (request.getComments() != null) {
+			updatedDevice.setComments(request.getComments());
+		}
+		if ((request.getMetadata() != null) && (request.getMetadata().size() > 0)) {
+			updatedDevice.getMetadata().clear();
+			MetadataProvider.copy(request, updatedDevice);
+		}
+		MongoPersistence.setUpdatedEntityMetadata(updatedDevice);
+
+		return putDeviceJson(hbase, updatedDevice);
+	}
+
+	/**
+	 * List devices that meet the given criteria.
+	 * 
+	 * @param hbase
+	 * @param includeDeleted
+	 * @param criteria
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static SearchResults<IDevice> listDevices(HBaseConnectivity hbase, boolean includeDeleted,
+			ISearchCriteria criteria) throws SiteWhereException {
+		ArrayList<KeyValue> matches = getFilteredDevices(hbase, includeDeleted, false, criteria);
+		List<IDevice> response = new ArrayList<IDevice>();
+		for (KeyValue match : matches) {
+			response.add(MarshalUtils.unmarshalJson(new String(match.value()), Device.class));
+		}
+		return new SearchResults<IDevice>(response);
+	}
+
+	/**
+	 * List devices that do not have a current assignment.
+	 * 
+	 * @param hbase
+	 * @param criteria
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static SearchResults<IDevice> listUnassignedDevices(HBaseConnectivity hbase,
+			ISearchCriteria criteria) throws SiteWhereException {
+		ArrayList<KeyValue> matches = getFilteredDevices(hbase, false, true, criteria);
+		List<IDevice> response = new ArrayList<IDevice>();
+		for (KeyValue match : matches) {
+			response.add(MarshalUtils.unmarshalJson(new String(match.value()), Device.class));
+		}
+		return new SearchResults<IDevice>(response);
+	}
+
+	/**
+	 * Get a list of devices filtered with certain criteria.
+	 * 
+	 * @param hbase
+	 * @param includeDeleted
+	 * @param excludeAssigned
+	 * @param criteria
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	protected static ArrayList<KeyValue> getFilteredDevices(HBaseConnectivity hbase, boolean includeDeleted,
+			boolean excludeAssigned, ISearchCriteria criteria) throws SiteWhereException {
+		Scanner scanner = hbase.getClient().newScanner(SiteWhereHBaseConstants.DEVICES_TABLE_NAME);
+		try {
+			ArrayList<KeyValue> matches = new ArrayList<KeyValue>();
+			ArrayList<ArrayList<KeyValue>> results;
+			while ((results = scanner.nextRows().joinUninterruptibly()) != null) {
+				for (ArrayList<KeyValue> row : results) {
+					boolean shouldAdd = true;
+					KeyValue jsonColumn = null;
+					for (KeyValue column : row) {
+						byte[] qualifier = column.qualifier();
+						if ((Bytes.equals(CURRENT_ASSIGNMENT, qualifier)) && (excludeAssigned)) {
+							shouldAdd = false;
+						}
+						if (Bytes.equals(JSON_CONTENT, qualifier)) {
+							jsonColumn = column;
+						}
+					}
+					if ((shouldAdd) && (jsonColumn != null)) {
+						matches.add(jsonColumn);
+					}
+				}
+			}
+			return matches;
+		} catch (Exception e) {
+			throw new SiteWhereException("Error scanning results for listing devices.", e);
+		} finally {
+			try {
+				scanner.close().joinUninterruptibly();
+			} catch (Exception e) {
+				LOGGER.error("Error shutting down scanner for listing devices.", e);
+			}
+		}
+	}
+
+	/**
+	 * Save the JSON representation of a device.
+	 * 
+	 * @param hbase
+	 * @param device
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static Device putDeviceJson(HBaseConnectivity hbase, Device device) throws SiteWhereException {
+		Long value = IdManager.getInstance().getDeviceKeys().getValue(device.getHardwareId());
+		if (value == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
+		}
+		byte[] primary = getPrimaryRowkey(value);
+		String json = MarshalUtils.marshalJson(device);
 
 		// Create primary device record.
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
 				SiteWhereHBaseConstants.FAMILY_ID, JSON_CONTENT, json.getBytes());
-		HBasePersistence.syncPut(hbase, put, "Unable to create device.");
+		HBasePersistence.syncPut(hbase, put, "Unable to set JSON for device.");
 
-		return newDevice;
+		return device;
 	}
 
 	/**
@@ -101,7 +235,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDevice getDeviceByHardwareId(HBaseConnectivity hbase, String hardwareId)
+	public static Device getDeviceByHardwareId(HBaseConnectivity hbase, String hardwareId)
 			throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
@@ -118,12 +252,7 @@ public class HBaseDevice {
 			throw new SiteWhereException("Expected one JSON entry for device and found: " + results.size());
 		}
 		byte[] json = results.get(0).value();
-		ObjectMapper mapper = new ObjectMapper();
-		try {
-			return mapper.readValue(json, Device.class);
-		} catch (Throwable e) {
-			throw new SiteWhereException("Unable to parse device JSON.", e);
-		}
+		return MarshalUtils.unmarshalJson(new String(json), Device.class);
 	}
 
 	/**

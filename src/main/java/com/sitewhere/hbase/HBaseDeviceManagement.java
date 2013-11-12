@@ -11,6 +11,7 @@ package com.sitewhere.hbase;
 
 import java.util.List;
 
+import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.log4j.Logger;
 
 import com.sitewhere.hbase.common.SiteWhereTables;
@@ -86,9 +87,10 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 	 * @throws SiteWhereException
 	 */
 	protected void ensureTablesExist() throws SiteWhereException {
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.UID_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.SITES_TABLE_NAME);
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.DEVICES_TABLE_NAME);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.UID_TABLE_NAME, BloomType.ROW);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.SITES_TABLE_NAME, BloomType.ROW);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.EVENTS_TABLE_NAME, BloomType.ROW);
+		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.DEVICES_TABLE_NAME, BloomType.ROW);
 	}
 
 	/*
@@ -121,10 +123,14 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDevice.getDeviceByHardwareId(hbase, hardwareId);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#updateDevice(java.lang.String,
+	 * com.sitewhere.spi.device.request.IDeviceCreateRequest)
+	 */
 	public IDevice updateDevice(String hardwareId, IDeviceCreateRequest request) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDevice.updateDevice(hbase, hardwareId, request);
 	}
 
 	/*
@@ -142,17 +148,26 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDeviceAssignment.getDeviceAssignment(hbase, token);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#listDevices(boolean,
+	 * com.sitewhere.spi.common.ISearchCriteria)
+	 */
 	public SearchResults<IDevice> listDevices(boolean includeDeleted, ISearchCriteria criteria)
 			throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDevice.listDevices(hbase, includeDeleted, criteria);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#listUnassignedDevices(com.sitewhere.
+	 * spi.common.ISearchCriteria)
+	 */
 	public SearchResults<IDevice> listUnassignedDevices(ISearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDevice.listUnassignedDevices(hbase, criteria);
 	}
 
 	@Override
@@ -282,11 +297,15 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#getDeviceAssignmentsNear(double,
+	 * double, double, com.sitewhere.spi.common.ISearchCriteria)
+	 */
 	public SearchResults<IDeviceAssignment> getDeviceAssignmentsNear(double latitude, double longitude,
 			double maxDistance, ISearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		throw new SiteWhereException("Geospatial queries not avaliable on HBase version yet.");
 	}
 
 	/*
@@ -323,8 +342,7 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 	 */
 	public SearchResults<IDeviceMeasurements> listDeviceMeasurementsForSite(String siteToken,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceEvent.listDeviceMeasurementsForSite(hbase, siteToken, criteria);
 	}
 
 	@Override
@@ -359,11 +377,16 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDeviceEvent.listDeviceLocations(hbase, assignmentToken, criteria);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#listDeviceLocationsForSite(java.lang
+	 * .String, com.sitewhere.spi.common.IDateRangeSearchCriteria)
+	 */
 	public SearchResults<IDeviceLocation> listDeviceLocationsForSite(String siteToken,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceEvent.listDeviceLocationsForSite(hbase, siteToken, criteria);
 	}
 
 	@Override
@@ -403,11 +426,16 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDeviceEvent.listDeviceAlerts(hbase, assignmentToken, criteria);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#listDeviceAlertsForSite(java.lang.String
+	 * , com.sitewhere.spi.common.IDateRangeSearchCriteria)
+	 */
 	public SearchResults<IDeviceAlert> listDeviceAlertsForSite(String siteToken,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceEvent.listDeviceAlertsForSite(hbase, siteToken, criteria);
 	}
 
 	/*
