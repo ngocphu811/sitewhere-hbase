@@ -22,10 +22,10 @@ public class MarshalUtils {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static String marshalJson(Object object) throws SiteWhereException {
+	public static byte[] marshalJson(Object object) throws SiteWhereException {
 		ObjectMapper mapper = new ObjectMapper();
 		try {
-			return mapper.writeValueAsString(object);
+			return mapper.writeValueAsBytes(object);
 		} catch (JsonProcessingException e) {
 			throw new SiteWhereException("Could not marshal device as JSON.", e);
 		}
@@ -39,7 +39,7 @@ public class MarshalUtils {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static <T> T unmarshalJson(String json, Class<T> type) throws SiteWhereException {
+	public static <T> T unmarshalJson(byte[] json, Class<T> type) throws SiteWhereException {
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			return mapper.readValue(json, type);

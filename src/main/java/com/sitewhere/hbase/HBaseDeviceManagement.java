@@ -236,11 +236,16 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseSite.getSiteByToken(hbase, assignment.getSiteToken());
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#updateDeviceAssignmentMetadata(java.
+	 * lang.String, com.sitewhere.spi.common.IMetadataProvider)
+	 */
 	public IDeviceAssignment updateDeviceAssignmentMetadata(String token, IMetadataProvider metadata)
 			throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceAssignment.updateDeviceAssignmentMetadata(hbase, token, metadata);
 	}
 
 	@Override

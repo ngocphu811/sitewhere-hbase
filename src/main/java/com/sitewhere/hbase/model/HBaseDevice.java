@@ -132,7 +132,7 @@ public class HBaseDevice {
 		ArrayList<KeyValue> matches = getFilteredDevices(hbase, includeDeleted, false, criteria);
 		List<IDevice> response = new ArrayList<IDevice>();
 		for (KeyValue match : matches) {
-			response.add(MarshalUtils.unmarshalJson(new String(match.value()), Device.class));
+			response.add(MarshalUtils.unmarshalJson(match.value(), Device.class));
 		}
 		return new SearchResults<IDevice>(response);
 	}
@@ -150,7 +150,7 @@ public class HBaseDevice {
 		ArrayList<KeyValue> matches = getFilteredDevices(hbase, false, true, criteria);
 		List<IDevice> response = new ArrayList<IDevice>();
 		for (KeyValue match : matches) {
-			response.add(MarshalUtils.unmarshalJson(new String(match.value()), Device.class));
+			response.add(MarshalUtils.unmarshalJson(match.value(), Device.class));
 		}
 		return new SearchResults<IDevice>(response);
 	}
@@ -218,11 +218,11 @@ public class HBaseDevice {
 			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
 		}
 		byte[] primary = getPrimaryRowkey(value);
-		String json = MarshalUtils.marshalJson(device);
+		byte[] json = MarshalUtils.marshalJson(device);
 
 		// Create primary device record.
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
-				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json.getBytes());
+				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
 		HBasePersistence.syncPut(hbase, put, "Unable to set JSON for device.");
 
 		return device;
@@ -253,7 +253,7 @@ public class HBaseDevice {
 			throw new SiteWhereException("Expected one JSON entry for device and found: " + results.size());
 		}
 		byte[] json = results.get(0).value();
-		return MarshalUtils.unmarshalJson(new String(json), Device.class);
+		return MarshalUtils.unmarshalJson(json, Device.class);
 	}
 
 	/**
@@ -287,9 +287,9 @@ public class HBaseDevice {
 		} else {
 			byte[] marker = { (byte) 0x01 };
 			existing.setDeleted(true);
-			String updated = MarshalUtils.marshalJson(existing);
+			byte[] updated = MarshalUtils.marshalJson(existing);
 			byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, SiteWhereHBaseConstants.DELETED };
-			byte[][] values = { updated.getBytes(), marker };
+			byte[][] values = { updated, marker };
 			PutRequest put = new PutRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
 					SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
 			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for device.");
