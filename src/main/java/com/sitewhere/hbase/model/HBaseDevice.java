@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.log4j.Logger;
 import org.hbase.async.Bytes;
+import org.hbase.async.DeleteRequest;
 import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
@@ -49,9 +50,6 @@ public class HBaseDevice {
 
 	/** Length of device identifier (subset of 8 byte long) */
 	public static final int DEVICE_IDENTIFIER_LENGTH = 4;
-
-	/** Column qualifier for site JSON content */
-	public static final byte[] JSON_CONTENT = Bytes.UTF8("json");
 
 	/** Column qualifier for current device assignment */
 	public static final byte[] CURRENT_ASSIGNMENT = Bytes.UTF8("assignment");
@@ -182,7 +180,10 @@ public class HBaseDevice {
 						if ((Bytes.equals(CURRENT_ASSIGNMENT, qualifier)) && (excludeAssigned)) {
 							shouldAdd = false;
 						}
-						if (Bytes.equals(JSON_CONTENT, qualifier)) {
+						if ((Bytes.equals(SiteWhereHBaseConstants.DELETED, qualifier)) && (!includeDeleted)) {
+							shouldAdd = false;
+						}
+						if (Bytes.equals(SiteWhereHBaseConstants.JSON_CONTENT, qualifier)) {
 							jsonColumn = column;
 						}
 					}
@@ -221,7 +222,7 @@ public class HBaseDevice {
 
 		// Create primary device record.
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
-				SiteWhereHBaseConstants.FAMILY_ID, JSON_CONTENT, json.getBytes());
+				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json.getBytes());
 		HBasePersistence.syncPut(hbase, put, "Unable to set JSON for device.");
 
 		return device;
@@ -245,7 +246,7 @@ public class HBaseDevice {
 		// Find row key based on value associated with hardware id.
 		byte[] primary = getPrimaryRowkey(deviceId);
 		GetRequest request = new GetRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary).family(
-				SiteWhereHBaseConstants.FAMILY_ID).qualifier(JSON_CONTENT);
+				SiteWhereHBaseConstants.FAMILY_ID).qualifier(SiteWhereHBaseConstants.JSON_CONTENT);
 		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
 				"Unable to load device by hardware id.");
 		if (results.size() != 1) {
@@ -253,6 +254,47 @@ public class HBaseDevice {
 		}
 		byte[] json = results.get(0).value();
 		return MarshalUtils.unmarshalJson(new String(json), Device.class);
+	}
+
+	/**
+	 * Delete a device based on hardware id. Depending on 'force' the record will be
+	 * physically deleted or a marker qualifier will be added to mark it as deleted. Note:
+	 * Physically deleting a device can leave orphaned references and should not be done
+	 * in a production system!
+	 * 
+	 * @param hbase
+	 * @param hardwareId
+	 * @param force
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static IDevice deleteDevice(HBaseConnectivity hbase, String hardwareId, boolean force)
+			throws SiteWhereException {
+		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
+		if (deviceId == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
+		}
+		Device existing = getDeviceByHardwareId(hbase, hardwareId);
+		byte[] primary = getPrimaryRowkey(deviceId);
+		if (force) {
+			IdManager.getInstance().getDeviceKeys().delete(hardwareId);
+			DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary);
+			try {
+				hbase.getClient().delete(delete).joinUninterruptibly();
+			} catch (Exception e) {
+				throw new SiteWhereException("Unable to delete device.", e);
+			}
+		} else {
+			byte[] marker = { (byte) 0x01 };
+			existing.setDeleted(true);
+			String updated = MarshalUtils.marshalJson(existing);
+			byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, SiteWhereHBaseConstants.DELETED };
+			byte[][] values = { updated.getBytes(), marker };
+			PutRequest put = new PutRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
+					SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for device.");
+		}
+		return existing;
 	}
 
 	/**

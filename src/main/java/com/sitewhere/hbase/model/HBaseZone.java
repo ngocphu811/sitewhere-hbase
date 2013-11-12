@@ -43,9 +43,6 @@ public class HBaseZone {
 	/** Length of site identifier (subset of 8 byte long) */
 	public static final int ZONE_IDENTIFIER_LENGTH = 4;
 
-	/** Column qualifier for site JSON content */
-	public static final byte[] JSON_CONTENT = Bytes.UTF8("json");
-
 	/**
 	 * Create a new zone.
 	 * 
@@ -94,7 +91,7 @@ public class HBaseZone {
 
 		// Create zone record.
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, JSON_CONTENT, json.getBytes());
+				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json.getBytes());
 		HBasePersistence.syncPut(hbase, put, "Unable to create site.");
 
 		return zone;
@@ -115,7 +112,7 @@ public class HBaseZone {
 		}
 
 		GetRequest request = new GetRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey).family(
-				SiteWhereHBaseConstants.FAMILY_ID).qualifier(JSON_CONTENT);
+				SiteWhereHBaseConstants.FAMILY_ID).qualifier(SiteWhereHBaseConstants.JSON_CONTENT);
 		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
 				"Unable to load zone by token.");
 		if (results.size() != 1) {

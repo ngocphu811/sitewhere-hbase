@@ -39,9 +39,6 @@ public class HBaseSite {
 	/** Length of site identifier (subset of 8 byte long) */
 	public static final int SITE_IDENTIFIER_LENGTH = 2;
 
-	/** Column qualifier for site JSON content */
-	public static final byte[] JSON_CONTENT = Bytes.UTF8("json");
-
 	/** Column qualifier for zone counter */
 	public static final byte[] ZONE_COUNTER = Bytes.UTF8("zonectr");
 
@@ -86,7 +83,7 @@ public class HBaseSite {
 
 		// Create primary site record.
 		byte[] maxLong = Bytes.fromLong(Long.MAX_VALUE);
-		byte[][] qualifiers = { JSON_CONTENT, ZONE_COUNTER, ASSIGNMENT_COUNTER };
+		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, ZONE_COUNTER, ASSIGNMENT_COUNTER };
 		byte[][] values = { json.getBytes(), maxLong, maxLong };
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, primary,
 				SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
@@ -110,7 +107,7 @@ public class HBaseSite {
 		}
 		byte[] primary = getPrimaryRowkey(siteId);
 		GetRequest request = new GetRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, primary).family(
-				SiteWhereHBaseConstants.FAMILY_ID).qualifier(JSON_CONTENT);
+				SiteWhereHBaseConstants.FAMILY_ID).qualifier(SiteWhereHBaseConstants.JSON_CONTENT);
 		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
 				"Unable to load site by token.");
 		if (results.size() != 1) {

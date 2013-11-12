@@ -43,9 +43,6 @@ public class HBaseDeviceAssignment {
 	/** Length of device identifier (subset of 8 byte long) */
 	public static final int ASSIGNMENT_IDENTIFIER_LENGTH = 4;
 
-	/** Column qualifier for site JSON content */
-	public static final byte[] JSON_CONTENT = Bytes.UTF8("json");
-
 	/**
 	 * Create a new device assignment.
 	 * 
@@ -99,7 +96,7 @@ public class HBaseDeviceAssignment {
 
 		// Create zone record.
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, JSON_CONTENT, json.getBytes());
+				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json.getBytes());
 		HBasePersistence.syncPut(hbase, put, "Unable to create device assignment.");
 
 		// Set the back reference from the device that indicates it is currently assigned.
@@ -124,7 +121,7 @@ public class HBaseDeviceAssignment {
 		}
 
 		GetRequest request = new GetRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey).family(
-				SiteWhereHBaseConstants.FAMILY_ID).qualifier(JSON_CONTENT);
+				SiteWhereHBaseConstants.FAMILY_ID).qualifier(SiteWhereHBaseConstants.JSON_CONTENT);
 		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
 				"Unable to load device assignment by token.");
 		if (results.size() != 1) {

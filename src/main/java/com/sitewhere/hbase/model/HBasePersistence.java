@@ -12,6 +12,7 @@ package com.sitewhere.hbase.model;
 import java.util.ArrayList;
 import java.util.Date;
 
+import org.hbase.async.DeleteRequest;
 import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
@@ -54,6 +55,25 @@ public class HBasePersistence {
 		try {
 			request.setBufferable(false);
 			return hbase.getClient().put(request).joinUninterruptibly();
+		} catch (Exception e) {
+			throw new SiteWhereException(errorMessage, e);
+		}
+	}
+
+	/**
+	 * Send a synchronous delete to the server.
+	 * 
+	 * @param hbase
+	 * @param request
+	 * @param errorMessage
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static Object syncDelete(HBaseConnectivity hbase, DeleteRequest request, String errorMessage)
+			throws SiteWhereException {
+		try {
+			request.setBufferable(false);
+			return hbase.getClient().delete(request).joinUninterruptibly();
 		} catch (Exception e) {
 			throw new SiteWhereException(errorMessage, e);
 		}

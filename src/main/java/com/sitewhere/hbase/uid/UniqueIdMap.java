@@ -17,6 +17,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.hbase.async.Bytes;
+import org.hbase.async.DeleteRequest;
 import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
@@ -75,6 +76,18 @@ public abstract class UniqueIdMap<N, V> {
 	}
 
 	/**
+	 * Delete a mapping and reverse mapping in UID table.
+	 * 
+	 * @param name
+	 * @throws SiteWhereException
+	 */
+	public void delete(N name) throws SiteWhereException {
+		V value = nameToValue.get(name);
+		deleteNameToValue(name);
+		deleteValueToName(value);
+	}
+
+	/**
 	 * Create name to value row in the UID table.
 	 * 
 	 * @param name
@@ -94,6 +107,22 @@ public abstract class UniqueIdMap<N, V> {
 	}
 
 	/**
+	 * Delete an existing name to value mapping.
+	 * 
+	 * @param name
+	 * @throws SiteWhereException
+	 */
+	protected void deleteNameToValue(N name) throws SiteWhereException {
+		byte[] nameBytes = convertName(name);
+		ByteBuffer nameBuffer = ByteBuffer.allocate(nameBytes.length + 1);
+		nameBuffer.put(keyIndicator.getIndicator());
+		nameBuffer.put(nameBytes);
+		DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, nameBuffer.array());
+		HBasePersistence.syncDelete(hbase, delete, "Unable to delete UID forward mapping.");
+		nameToValue.remove(name);
+	}
+
+	/**
 	 * Create value to name row in the UID table.
 	 * 
 	 * @param name
@@ -110,6 +139,22 @@ public abstract class UniqueIdMap<N, V> {
 				SiteWhereHBaseConstants.FAMILY_ID, VALUE_QUAL, nameBytes);
 		HBasePersistence.syncPut(hbase, valuePut, "Unable to store value mapping in UID table.");
 		valueToName.put(value, name);
+	}
+
+	/**
+	 * Delete an existing value to name mapping.
+	 * 
+	 * @param value
+	 * @throws SiteWhereException
+	 */
+	protected void deleteValueToName(V value) throws SiteWhereException {
+		byte[] valueBytes = convertValue(value);
+		ByteBuffer valueBuffer = ByteBuffer.allocate(valueBytes.length + 1);
+		valueBuffer.put(valueIndicator.getIndicator());
+		valueBuffer.put(valueBytes);
+		DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, valueBuffer.array());
+		HBasePersistence.syncDelete(hbase, delete, "Unable to delete UID backward mapping.");
+		valueToName.remove(value);
 	}
 
 	/**

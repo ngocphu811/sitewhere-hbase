@@ -18,8 +18,9 @@ import org.hbase.async.Bytes;
  */
 public interface SiteWhereHBaseConstants {
 
-	/** SiteWhere family id */
-	public static final byte[] FAMILY_ID = Bytes.UTF8("s");
+	/***************
+	 * TABLE NAMES *
+	 ***************/
 
 	/** Sites table name */
 	public static final byte[] UID_TABLE_NAME = Bytes.UTF8("sw-uids");
@@ -38,4 +39,21 @@ public interface SiteWhereHBaseConstants {
 
 	/** Authorities table name */
 	public static final byte[] AUTHORITIES_TABLE_NAME = Bytes.UTF8("sw-authorities");
+
+	/*******************
+	 * COLUMN FAMILIES *
+	 *******************/
+
+	/** SiteWhere family id */
+	public static final byte[] FAMILY_ID = Bytes.UTF8("s");
+
+	/*********************
+	 * COMMON QUALIFIERS *
+	 *********************/
+
+	/** Column qualifier for site JSON content */
+	public static final byte[] JSON_CONTENT = Bytes.UTF8("json");
+
+	/** Column qualifier that indicates a deleted record */
+	public static final byte[] DELETED = Bytes.UTF8("deleted");
 }

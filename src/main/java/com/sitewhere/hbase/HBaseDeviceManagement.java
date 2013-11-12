@@ -170,10 +170,14 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDevice.listUnassignedDevices(hbase, criteria);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#deleteDevice(java.lang.String,
+	 * boolean)
+	 */
 	public IDevice deleteDevice(String hardwareId, boolean force) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDevice.deleteDevice(hbase, hardwareId, force);
 	}
 
 	/*
