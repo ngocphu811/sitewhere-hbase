@@ -248,11 +248,16 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDeviceAssignment.updateDeviceAssignmentMetadata(hbase, token, metadata);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#updateDeviceAssignmentStatus(java.lang
+	 * .String, com.sitewhere.spi.device.DeviceAssignmentStatus)
+	 */
 	public IDeviceAssignment updateDeviceAssignmentStatus(String token, DeviceAssignmentStatus status)
 			throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceAssignment.updateDeviceAssignmentStatus(hbase, token, status);
 	}
 
 	/*
@@ -291,10 +296,14 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return response;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#endDeviceAssignment(java.lang.String)
+	 */
 	public IDeviceAssignment endDeviceAssignment(String token) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDeviceAssignment.endDeviceAssignment(hbase, token);
 	}
 
 	@Override

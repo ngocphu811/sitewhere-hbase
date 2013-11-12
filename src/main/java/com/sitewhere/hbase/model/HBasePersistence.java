@@ -42,6 +42,17 @@ public class HBasePersistence {
 	}
 
 	/**
+	 * Set updated fields.
+	 * 
+	 * @param entity
+	 * @throws SiteWhereException
+	 */
+	public static void setUpdatedEntityMetadata(MetadataProviderEntity entity) throws SiteWhereException {
+		entity.setUpdatedDate(new Date());
+		entity.setUpdatedBy(LoginManager.getCurrentlyLoggedInUser().getUsername());
+	}
+
+	/**
 	 * Send a synchronous put to the server.
 	 * 
 	 * @param hbase
