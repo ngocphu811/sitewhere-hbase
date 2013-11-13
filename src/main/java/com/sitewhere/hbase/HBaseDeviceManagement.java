@@ -377,13 +377,6 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDeviceEvent.listDeviceMeasurementsForSite(hbase, siteToken, criteria);
 	}
 
-	@Override
-	public void associateAlertWithMeasurements(String alertId, String measurementsId)
-			throws SiteWhereException {
-		// TODO Auto-generated method stub
-
-	}
-
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -421,18 +414,15 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDeviceEvent.listDeviceLocationsForSite(hbase, siteToken, criteria);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#listDeviceLocations(java.util.List,
+	 * com.sitewhere.spi.common.IDateRangeSearchCriteria)
+	 */
 	public SearchResults<IDeviceLocation> listDeviceLocations(List<String> assignmentTokens,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public IDeviceLocation associateAlertWithLocation(String alertId, String locationId)
-			throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		throw new SiteWhereException("Not implemented yet for HBase device management.");
 	}
 
 	/*
