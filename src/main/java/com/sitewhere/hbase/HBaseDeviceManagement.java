@@ -526,10 +526,14 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseZone.createZone(hbase, site, request);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#updateZone(java.lang.String,
+	 * com.sitewhere.spi.device.request.IZoneCreateRequest)
+	 */
 	public IZone updateZone(String token, IZoneCreateRequest request) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseZone.updateZone(hbase, token, request);
 	}
 
 	/*
@@ -541,17 +545,25 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseZone.getZone(hbase, zoneToken);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#listZones(java.lang.String,
+	 * com.sitewhere.spi.common.ISearchCriteria)
+	 */
 	public SearchResults<IZone> listZones(String siteToken, ISearchCriteria criteria)
 			throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseSite.listZonesForSite(hbase, siteToken, criteria);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#deleteZone(java.lang.String,
+	 * boolean)
+	 */
 	public IZone deleteZone(String zoneToken, boolean force) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseZone.deleteZone(hbase, zoneToken, force);
 	}
 
 	public String getQuorum() {

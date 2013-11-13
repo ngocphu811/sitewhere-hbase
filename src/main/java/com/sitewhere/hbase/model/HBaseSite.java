@@ -39,12 +39,14 @@ import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.device.DeviceAssignment;
 import com.sitewhere.rest.model.device.Site;
+import com.sitewhere.rest.model.device.Zone;
 import com.sitewhere.rest.service.search.SearchResults;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.SiteWhereSystemException;
 import com.sitewhere.spi.common.ISearchCriteria;
 import com.sitewhere.spi.device.IDeviceAssignment;
 import com.sitewhere.spi.device.ISite;
+import com.sitewhere.spi.device.IZone;
 import com.sitewhere.spi.device.request.ISiteCreateRequest;
 import com.sitewhere.spi.error.ErrorCode;
 import com.sitewhere.spi.error.ErrorLevel;
@@ -201,6 +203,32 @@ public class HBaseSite {
 			response.add(MarshalUtils.unmarshalJson(match, DeviceAssignment.class));
 		}
 		return new SearchResults<IDeviceAssignment>(response);
+	}
+
+	/**
+	 * List zones for a given site.
+	 * 
+	 * @param hbase
+	 * @param siteToken
+	 * @param criteria
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static SearchResults<IZone> listZonesForSite(HBaseConnectivity hbase, String siteToken,
+			ISearchCriteria criteria) throws SiteWhereException {
+		Long siteId = IdManager.getInstance().getSiteKeys().getValue(siteToken);
+		if (siteId == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidSiteToken, ErrorLevel.ERROR);
+		}
+		byte[] zonePrefix = getZoneRowKey(siteId);
+		String regex = "^" + DataUtils.regexHex(zonePrefix[0]) + DataUtils.regexHex(zonePrefix[1])
+				+ DataUtils.regexHex(zonePrefix[2]);
+		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, regex);
+		List<IZone> response = new ArrayList<IZone>();
+		for (byte[] match : matches) {
+			response.add(MarshalUtils.unmarshalJson(match, Zone.class));
+		}
+		return new SearchResults<IZone>(response);
 	}
 
 	/**

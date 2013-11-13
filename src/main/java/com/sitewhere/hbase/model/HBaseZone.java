@@ -13,21 +13,20 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import org.hbase.async.Bytes;
+import org.hbase.async.DeleteRequest;
 import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.device.SiteWherePersistence;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
-import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.Zone;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.SiteWhereSystemException;
-import com.sitewhere.spi.common.ILocation;
 import com.sitewhere.spi.device.ISite;
 import com.sitewhere.spi.device.IZone;
 import com.sitewhere.spi.device.request.IZoneCreateRequest;
@@ -65,37 +64,42 @@ public class HBaseZone {
 		// Associate new UUID with zone row key.
 		String uuid = IdManager.getInstance().getZoneKeys().createUniqueId(rowkey);
 
-		// Create zone to marshal as JSON.
-		Zone zone = new Zone();
-		zone.setToken(uuid);
-		zone.setSiteToken(site.getToken());
-		zone.setName(request.getName());
-		zone.setBorderColor(request.getBorderColor());
-		zone.setFillColor(request.getFillColor());
-		zone.setOpacity(request.getOpacity());
-
-		SiteWherePersistence.initializeEntityMetadata(zone);
-		MetadataProvider.copy(request, zone);
-
-		for (ILocation coordinate : request.getCoordinates()) {
-			zone.getCoordinates().add(coordinate);
-		}
+		// Use common processing logic so all backend implementations work the same.
+		Zone zone = SiteWherePersistence.zoneCreateLogic(request, site.getToken(), uuid);
 
 		// Serialize as JSON.
-		ObjectMapper mapper = new ObjectMapper();
-		String json = null;
-		try {
-			json = mapper.writeValueAsString(zone);
-		} catch (JsonProcessingException e) {
-			throw new SiteWhereException("Could not marshal zone as JSON.", e);
-		}
+		byte[] json = MarshalUtils.marshalJson(zone);
 
 		// Create zone record.
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json.getBytes());
+				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
 		HBasePersistence.syncPut(hbase, put, "Unable to create site.");
 
 		return zone;
+	}
+
+	/**
+	 * Update an existing zone.
+	 * 
+	 * @param hbase
+	 * @param token
+	 * @param request
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static Zone updateZone(HBaseConnectivity hbase, String token, IZoneCreateRequest request)
+			throws SiteWhereException {
+		Zone updated = getZone(hbase, token);
+
+		// Use common update logic so that backend implemetations act the same way.
+		SiteWherePersistence.zoneUpdateLogic(request, updated);
+
+		byte[] zoneId = IdManager.getInstance().getZoneKeys().getValue(token);
+		byte[] json = MarshalUtils.marshalJson(updated);
+		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, zoneId,
+				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
+		HBasePersistence.syncPut(hbase, put, "Unable to update zone.");
+		return updated;
 	}
 
 	/**
@@ -106,7 +110,7 @@ public class HBaseZone {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IZone getZone(HBaseConnectivity hbase, String token) throws SiteWhereException {
+	public static Zone getZone(HBaseConnectivity hbase, String token) throws SiteWhereException {
 		byte[] rowkey = IdManager.getInstance().getZoneKeys().getValue(token);
 		if (rowkey == null) {
 			throw new SiteWhereSystemException(ErrorCode.InvalidZoneToken, ErrorLevel.ERROR);
@@ -126,6 +130,44 @@ public class HBaseZone {
 		} catch (Throwable e) {
 			throw new SiteWhereException("Unable to parse zone JSON.", e);
 		}
+	}
+
+	/**
+	 * Delete an existing zone.
+	 * 
+	 * @param hbase
+	 * @param token
+	 * @param force
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static Zone deleteZone(HBaseConnectivity hbase, String token, boolean force)
+			throws SiteWhereException {
+		byte[] zoneId = IdManager.getInstance().getZoneKeys().getValue(token);
+		if (zoneId == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidZoneToken, ErrorLevel.ERROR);
+		}
+		Zone existing = getZone(hbase, token);
+		existing.setDeleted(true);
+		if (force) {
+			IdManager.getInstance().getZoneKeys().delete(token);
+			DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, zoneId);
+			try {
+				hbase.getClient().delete(delete).joinUninterruptibly();
+			} catch (Exception e) {
+				throw new SiteWhereException("Unable to delete zone.", e);
+			}
+		} else {
+			byte[] marker = { (byte) 0x01 };
+			SiteWherePersistence.setUpdatedEntityMetadata(existing);
+			byte[] updated = MarshalUtils.marshalJson(existing);
+			byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, SiteWhereHBaseConstants.DELETED };
+			byte[][] values = { updated, marker };
+			PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, zoneId,
+					SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for zone.");
+		}
+		return existing;
 	}
 
 	/**
