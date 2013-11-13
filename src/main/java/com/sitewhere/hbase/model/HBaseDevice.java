@@ -9,6 +9,7 @@
  */
 package com.sitewhere.hbase.model;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,6 +51,9 @@ public class HBaseDevice {
 
 	/** Length of device identifier (subset of 8 byte long) */
 	public static final int DEVICE_IDENTIFIER_LENGTH = 4;
+
+	/** Byte that indicates an assignment history entry qualifier */
+	public static final byte ASSIGNMENT_HISTORY_INDICATOR = (byte) 0x01;
 
 	/** Column qualifier for current device assignment */
 	public static final byte[] CURRENT_ASSIGNMENT = Bytes.UTF8("assignment");
@@ -352,8 +356,9 @@ public class HBaseDevice {
 			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
 		}
 		byte[] primary = getPrimaryRowkey(deviceId);
-		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, CURRENT_ASSIGNMENT };
-		byte[][] values = { json, assignmentToken.getBytes() };
+		byte[] assnHistory = getNextDeviceAssignmentHistoryKey();
+		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, CURRENT_ASSIGNMENT, assnHistory };
+		byte[][] values = { json, assignmentToken.getBytes(), assignmentToken.getBytes() };
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
 				SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment.");
@@ -417,5 +422,23 @@ public class HBaseDevice {
 	public static byte[] getPrimaryRowkey(Long deviceId) {
 		byte[] did = getDeviceIdentifier(deviceId);
 		return did;
+	}
+
+	/**
+	 * Creates key with an indicator byte followed by the inverted timestamp to order
+	 * assignments in most recent to least recent order.
+	 * 
+	 * @return
+	 */
+	public static byte[] getNextDeviceAssignmentHistoryKey() {
+		long time = System.currentTimeMillis() / 1000;
+		byte[] timeBytes = Bytes.fromLong(time);
+		ByteBuffer buffer = ByteBuffer.allocate(5);
+		buffer.put(ASSIGNMENT_HISTORY_INDICATOR);
+		buffer.put((byte) ~timeBytes[4]);
+		buffer.put((byte) ~timeBytes[5]);
+		buffer.put((byte) ~timeBytes[6]);
+		buffer.put((byte) ~timeBytes[7]);
+		return buffer.array();
 	}
 }

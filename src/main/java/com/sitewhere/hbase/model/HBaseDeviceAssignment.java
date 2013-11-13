@@ -84,17 +84,8 @@ public class HBaseDeviceAssignment {
 		String uuid = IdManager.getInstance().getAssignmentKeys().createUniqueId(rowkey);
 
 		// Create device assignment for JSON.
-		DeviceAssignment newAssignment = new DeviceAssignment();
-		newAssignment.setToken(uuid);
-		newAssignment.setSiteToken(request.getSiteToken());
-		newAssignment.setDeviceHardwareId(request.getDeviceHardwareId());
-		newAssignment.setAssignmentType(request.getAssignmentType());
-		newAssignment.setAssetId(request.getAssetId());
-		newAssignment.setActiveDate(new Date());
-		newAssignment.setStatus(DeviceAssignmentStatus.Active);
-
-		SiteWherePersistence.initializeEntityMetadata(newAssignment);
-		MetadataProvider.copy(request, newAssignment);
+		DeviceAssignment newAssignment = SiteWherePersistence.deviceAssignmentCreateLogic(request,
+				request.getSiteToken(), uuid);
 
 		byte[] json = MarshalUtils.marshalJson(newAssignment);
 		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, ASSIGNMENT_STATUS };
