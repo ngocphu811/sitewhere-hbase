@@ -31,16 +31,19 @@ import org.hbase.async.PutRequest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.device.SiteWherePersistence;
+import com.sitewhere.hbase.DataUtils;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.uid.IdManager;
+import com.sitewhere.rest.model.device.DeviceAssignment;
 import com.sitewhere.rest.model.device.Site;
 import com.sitewhere.rest.service.search.SearchResults;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.SiteWhereSystemException;
 import com.sitewhere.spi.common.ISearchCriteria;
+import com.sitewhere.spi.device.IDeviceAssignment;
 import com.sitewhere.spi.device.ISite;
 import com.sitewhere.spi.device.request.ISiteCreateRequest;
 import com.sitewhere.spi.error.ErrorCode;
@@ -64,6 +67,9 @@ public class HBaseSite {
 
 	/** Column qualifier for assignment counter */
 	public static final byte[] ASSIGNMENT_COUNTER = Bytes.UTF8("assnctr");
+
+	/** Regex for getting site rows */
+	public static final String REGEX_SITE = "^.{2}$";
 
 	/**
 	 * Create a new site.
@@ -163,7 +169,7 @@ public class HBaseSite {
 	 */
 	public static SearchResults<ISite> listSites(HBaseConnectivity hbase, ISearchCriteria criteria)
 			throws SiteWhereException {
-		ArrayList<byte[]> matches = getFilteredSites(hbase, false, criteria);
+		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, REGEX_SITE);
 		List<ISite> response = new ArrayList<ISite>();
 		for (byte[] match : matches) {
 			response.add(MarshalUtils.unmarshalJson(match, Site.class));
@@ -172,7 +178,33 @@ public class HBaseSite {
 	}
 
 	/**
-	 * Get sites as specified by search criteria.
+	 * List device assignments for a given site.
+	 * 
+	 * @param hbase
+	 * @param siteToken
+	 * @param criteria
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static SearchResults<IDeviceAssignment> listDeviceAssignmentsForSite(HBaseConnectivity hbase,
+			String siteToken, ISearchCriteria criteria) throws SiteWhereException {
+		Long siteId = IdManager.getInstance().getSiteKeys().getValue(siteToken);
+		if (siteId == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidSiteToken, ErrorLevel.ERROR);
+		}
+		byte[] assnPrefix = getAssignmentRowKey(siteId);
+		String regex = "^" + DataUtils.regexHex(assnPrefix[0]) + DataUtils.regexHex(assnPrefix[1])
+				+ DataUtils.regexHex(assnPrefix[2]);
+		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, regex);
+		List<IDeviceAssignment> response = new ArrayList<IDeviceAssignment>();
+		for (byte[] match : matches) {
+			response.add(MarshalUtils.unmarshalJson(match, DeviceAssignment.class));
+		}
+		return new SearchResults<IDeviceAssignment>(response);
+	}
+
+	/**
+	 * Get json associated with various rows in the site table based on regex filters.
 	 * 
 	 * @param hbase
 	 * @param includeDeleted
@@ -180,12 +212,12 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	protected static ArrayList<byte[]> getFilteredSites(HBaseConnectivity hbase, boolean includeDeleted,
-			ISearchCriteria criteria) throws SiteWhereException {
+	public static ArrayList<byte[]> getFilteredSiteRows(HBaseConnectivity hbase, boolean includeDeleted,
+			ISearchCriteria criteria, String filterRegex) throws SiteWhereException {
 		HTable sites = SiteWhereTables.getHTable(hbase, SiteWhereHBaseConstants.SITES_TABLE_NAME);
 		ResultScanner scanner = null;
 		try {
-			RegexStringComparator regex = new RegexStringComparator("^.{2}$");
+			RegexStringComparator regex = new RegexStringComparator(filterRegex);
 			RowFilter filter = new RowFilter(CompareOp.EQUAL, regex);
 			Scan scan = new Scan();
 			scan.setFilter(filter);
@@ -210,7 +242,7 @@ public class HBaseSite {
 			}
 			return matches;
 		} catch (Exception e) {
-			throw new SiteWhereException("Error scanning results for listing sites.", e);
+			throw new SiteWhereException("Error scanning site rows.", e);
 		} finally {
 			scanner.close();
 			try {

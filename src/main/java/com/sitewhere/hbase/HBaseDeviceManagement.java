@@ -312,11 +312,16 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return null;
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#getDeviceAssignmentsForSite(java.lang
+	 * .String, com.sitewhere.spi.common.ISearchCriteria)
+	 */
 	public SearchResults<IDeviceAssignment> getDeviceAssignmentsForSite(String siteToken,
 			ISearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseSite.listDeviceAssignmentsForSite(hbase, siteToken, criteria);
 	}
 
 	/*

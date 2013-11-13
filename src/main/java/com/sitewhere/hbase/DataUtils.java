@@ -10,9 +10,15 @@
 package com.sitewhere.hbase;
 
 public class DataUtils {
-	
+
 	final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
 
+	/**
+	 * Convert a byte array to a hex string.
+	 * 
+	 * @param bytes
+	 * @return
+	 */
 	public static String bytesToHex(byte[] bytes) {
 		char[] hexChars = new char[bytes.length * 2];
 		int v;
@@ -22,5 +28,21 @@ public class DataUtils {
 			hexChars[j * 2 + 1] = hexArray[v & 0x0F];
 		}
 		return new String(hexChars);
+	}
+
+	/**
+	 * Returns the regex version of a byte.
+	 * 
+	 * @param value
+	 * @return
+	 */
+	public static String regexHex(byte value) {
+		int v = value & 0xFF;
+		char[] chars = new char[4];
+		chars[0] = '\\';
+		chars[1] = 'x';
+		chars[2] = hexArray[v >>> 4];
+		chars[3] = hexArray[v & 0x0F];
+		return new String(chars);
 	}
 }
