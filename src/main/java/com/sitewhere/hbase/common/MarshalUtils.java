@@ -44,7 +44,7 @@ public class MarshalUtils {
 		try {
 			return mapper.readValue(json, type);
 		} catch (Throwable e) {
-			throw new SiteWhereException("Unable to parse device JSON.", e);
+			throw new SiteWhereException("Unable to parse JSON.", e);
 		}
 	}
 }

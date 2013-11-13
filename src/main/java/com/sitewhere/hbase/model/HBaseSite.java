@@ -9,9 +9,19 @@
  */
 package com.sitewhere.hbase.model;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.List;
 
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.filter.RegexStringComparator;
+import org.apache.hadoop.hbase.filter.RowFilter;
+import org.apache.log4j.Logger;
 import org.hbase.async.AtomicIncrementRequest;
 import org.hbase.async.Bytes;
 import org.hbase.async.DeleteRequest;
@@ -24,10 +34,13 @@ import com.sitewhere.core.device.SiteWherePersistence;
 import com.sitewhere.hbase.HBaseConnectivity;
 import com.sitewhere.hbase.SiteWhereHBaseConstants;
 import com.sitewhere.hbase.common.MarshalUtils;
+import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.device.Site;
+import com.sitewhere.rest.service.search.SearchResults;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.SiteWhereSystemException;
+import com.sitewhere.spi.common.ISearchCriteria;
 import com.sitewhere.spi.device.ISite;
 import com.sitewhere.spi.device.request.ISiteCreateRequest;
 import com.sitewhere.spi.error.ErrorCode;
@@ -39,6 +52,9 @@ import com.sitewhere.spi.error.ErrorLevel;
  * @author Derek
  */
 public class HBaseSite {
+
+	/** Private logger instance */
+	private static Logger LOGGER = Logger.getLogger(HBaseSite.class);
 
 	/** Length of site identifier (subset of 8 byte long) */
 	public static final int SITE_IDENTIFIER_LENGTH = 2;
@@ -135,6 +151,74 @@ public class HBaseSite {
 				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
 		HBasePersistence.syncPut(hbase, put, "Unable to update site.");
 		return updated;
+	}
+
+	/**
+	 * List all sites that match the given criteria.
+	 * 
+	 * @param hbase
+	 * @param criteria
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static SearchResults<ISite> listSites(HBaseConnectivity hbase, ISearchCriteria criteria)
+			throws SiteWhereException {
+		ArrayList<byte[]> matches = getFilteredSites(hbase, false, criteria);
+		List<ISite> response = new ArrayList<ISite>();
+		for (byte[] match : matches) {
+			response.add(MarshalUtils.unmarshalJson(match, Site.class));
+		}
+		return new SearchResults<ISite>(response);
+	}
+
+	/**
+	 * Get sites as specified by search criteria.
+	 * 
+	 * @param hbase
+	 * @param includeDeleted
+	 * @param criteria
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	protected static ArrayList<byte[]> getFilteredSites(HBaseConnectivity hbase, boolean includeDeleted,
+			ISearchCriteria criteria) throws SiteWhereException {
+		HTable sites = SiteWhereTables.getHTable(hbase, SiteWhereHBaseConstants.SITES_TABLE_NAME);
+		ResultScanner scanner = null;
+		try {
+			RegexStringComparator regex = new RegexStringComparator("^.{2}$");
+			RowFilter filter = new RowFilter(CompareOp.EQUAL, regex);
+			Scan scan = new Scan();
+			scan.setFilter(filter);
+			scanner = sites.getScanner(scan);
+
+			ArrayList<byte[]> matches = new ArrayList<byte[]>();
+			for (Result result : scanner) {
+				boolean shouldAdd = true;
+				byte[] json = null;
+				for (org.apache.hadoop.hbase.KeyValue column : result.raw()) {
+					byte[] qualifier = column.getQualifier();
+					if ((Bytes.equals(SiteWhereHBaseConstants.DELETED, qualifier)) && (!includeDeleted)) {
+						shouldAdd = false;
+					}
+					if (Bytes.equals(SiteWhereHBaseConstants.JSON_CONTENT, qualifier)) {
+						json = column.getValue();
+					}
+				}
+				if ((shouldAdd) && (json != null)) {
+					matches.add(json);
+				}
+			}
+			return matches;
+		} catch (Exception e) {
+			throw new SiteWhereException("Error scanning results for listing sites.", e);
+		} finally {
+			scanner.close();
+			try {
+				sites.close();
+			} catch (IOException e) {
+				LOGGER.error("Error closing sites table.", e);
+			}
+		}
 	}
 
 	/**

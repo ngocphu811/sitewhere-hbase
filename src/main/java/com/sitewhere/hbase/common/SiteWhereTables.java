@@ -9,8 +9,11 @@
  */
 package com.sitewhere.hbase.common;
 
+import java.io.IOException;
+
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.log4j.Logger;
 
@@ -52,6 +55,22 @@ public class SiteWhereTables {
 			}
 		} catch (Throwable e) {
 			throw new SiteWhereException(e);
+		}
+	}
+
+	/**
+	 * Open an HTable.
+	 * 
+	 * @param hbase
+	 * @param tableName
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static HTable getHTable(HBaseConnectivity hbase, byte[] tableName) throws SiteWhereException {
+		try {
+			return new HTable(hbase.getAdmin().getConfiguration(), SiteWhereHBaseConstants.SITES_TABLE_NAME);
+		} catch (IOException e) {
+			throw new SiteWhereException("Unable to open HTable.", e);
 		}
 	}
 }

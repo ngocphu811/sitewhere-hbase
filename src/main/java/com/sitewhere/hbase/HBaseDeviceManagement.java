@@ -500,10 +500,14 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseSite.getSiteByToken(hbase, token);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#listSites(com.sitewhere.spi.common.
+	 * ISearchCriteria)
+	 */
 	public SearchResults<ISite> listSites(ISearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseSite.listSites(hbase, criteria);
 	}
 
 	/*
