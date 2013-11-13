@@ -1,4 +1,4 @@
-SiteWhere HBase Device Management Implementation
-================================================
+SiteWhere HBase Service Provider Implementation
+=================================================
 
-SiteWhere device management implementation on top of Apache HBase.
+Implementation of SiteWhere core service provider interfaces for HBase.
