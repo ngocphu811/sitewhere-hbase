@@ -305,11 +305,16 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseDeviceAssignment.endDeviceAssignment(hbase, token);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.sitewhere.spi.device.IDeviceManagement#getDeviceAssignmentHistory(java.lang
+	 * .String, com.sitewhere.spi.common.ISearchCriteria)
+	 */
 	public SearchResults<IDeviceAssignment> getDeviceAssignmentHistory(String hardwareId,
 			ISearchCriteria criteria) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseDevice.getDeviceAssignmentHistory(hbase, hardwareId);
 	}
 
 	/*

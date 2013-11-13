@@ -30,11 +30,13 @@ import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.Device;
+import com.sitewhere.rest.model.device.DeviceAssignment;
 import com.sitewhere.rest.service.search.SearchResults;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.SiteWhereSystemException;
 import com.sitewhere.spi.common.ISearchCriteria;
 import com.sitewhere.spi.device.IDevice;
+import com.sitewhere.spi.device.IDeviceAssignment;
 import com.sitewhere.spi.device.request.IDeviceCreateRequest;
 import com.sitewhere.spi.error.ErrorCode;
 import com.sitewhere.spi.error.ErrorLevel;
@@ -396,6 +398,39 @@ public class HBaseDevice {
 			hbase.getClient().delete(delete).joinUninterruptibly();
 		} catch (Exception e) {
 			throw new SiteWhereException("Unable to delete device assignment indicator for device.", e);
+		}
+	}
+
+	/**
+	 * Get the assignment history for a device.
+	 * 
+	 * @param hbase
+	 * @param hardwareId
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static SearchResults<IDeviceAssignment> getDeviceAssignmentHistory(HBaseConnectivity hbase,
+			String hardwareId) throws SiteWhereException {
+		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
+		if (deviceId == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
+		}
+		byte[] primary = getPrimaryRowkey(deviceId);
+		GetRequest get = new GetRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary);
+		try {
+			List<IDeviceAssignment> results = new ArrayList<IDeviceAssignment>();
+			ArrayList<KeyValue> columns = hbase.getClient().get(get).joinUninterruptibly();
+			for (KeyValue column : columns) {
+				byte[] qualifier = column.qualifier();
+				if (qualifier[0] == ASSIGNMENT_HISTORY_INDICATOR) {
+					String token = new String(column.value());
+					DeviceAssignment assn = HBaseDeviceAssignment.getDeviceAssignment(hbase, token);
+					results.add(assn);
+				}
+			}
+			return new SearchResults<IDeviceAssignment>(results);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to load device assignment history.", e);
 		}
 	}
 
