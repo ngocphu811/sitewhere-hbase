@@ -342,13 +342,20 @@ public class HBaseDevice {
 			throw new SiteWhereSystemException(ErrorCode.DeviceAlreadyAssigned, ErrorLevel.ERROR);
 		}
 
+		// Load object to update assignment token.
+		Device updated = getDeviceByHardwareId(hbase, hardwareId);
+		updated.setAssignmentToken(assignmentToken);
+		byte[] json = MarshalUtils.marshalJson(updated);
+
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
 			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
 		}
 		byte[] primary = getPrimaryRowkey(deviceId);
+		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, CURRENT_ASSIGNMENT };
+		byte[][] values = { json, assignmentToken.getBytes() };
 		PutRequest put = new PutRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
-				SiteWhereHBaseConstants.FAMILY_ID, CURRENT_ASSIGNMENT, assignmentToken.getBytes());
+				SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment.");
 	}
 
@@ -366,6 +373,18 @@ public class HBaseDevice {
 			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
 		}
 		byte[] primary = getPrimaryRowkey(deviceId);
+
+		Device updated = getDeviceByHardwareId(hbase, hardwareId);
+		updated.setAssignmentToken(null);
+		byte[] json = MarshalUtils.marshalJson(updated);
+		PutRequest put = new PutRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
+				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
+		try {
+			hbase.getClient().put(put).joinUninterruptibly();
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to delete assignment token for device.", e);
+		}
+
 		DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.DEVICES_TABLE_NAME, primary,
 				SiteWhereHBaseConstants.FAMILY_ID, CURRENT_ASSIGNMENT);
 		try {
