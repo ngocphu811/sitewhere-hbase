@@ -14,6 +14,7 @@ import java.util.ArrayList;
 
 import org.hbase.async.AtomicIncrementRequest;
 import org.hbase.async.Bytes;
+import org.hbase.async.DeleteRequest;
 import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
@@ -134,6 +135,46 @@ public class HBaseSite {
 				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
 		HBasePersistence.syncPut(hbase, put, "Unable to update site.");
 		return updated;
+	}
+
+	/**
+	 * Delete an existing site.
+	 * 
+	 * @param hbase
+	 * @param token
+	 * @param force
+	 * @return
+	 * @throws SiteWhereException
+	 */
+	public static Site deleteSite(HBaseConnectivity hbase, String token, boolean force)
+			throws SiteWhereException {
+		Site existing = getSiteByToken(hbase, token);
+		if (existing == null) {
+			throw new SiteWhereSystemException(ErrorCode.InvalidSiteToken, ErrorLevel.ERROR);
+		}
+		existing.setDeleted(true);
+
+		Long siteId = IdManager.getInstance().getSiteKeys().getValue(token);
+		byte[] rowkey = getPrimaryRowkey(siteId);
+		if (force) {
+			IdManager.getInstance().getSiteKeys().delete(token);
+			DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey);
+			try {
+				hbase.getClient().delete(delete).joinUninterruptibly();
+			} catch (Exception e) {
+				throw new SiteWhereException("Unable to delete site.", e);
+			}
+		} else {
+			byte[] marker = { (byte) 0x01 };
+			SiteWherePersistence.setUpdatedEntityMetadata(existing);
+			byte[] updated = MarshalUtils.marshalJson(existing);
+			byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, SiteWhereHBaseConstants.DELETED };
+			byte[][] values = { updated, marker };
+			PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
+					SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for site.");
+		}
+		return existing;
 	}
 
 	/**

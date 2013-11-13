@@ -275,6 +275,7 @@ public class HBaseDevice {
 			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
 		}
 		Device existing = getDeviceByHardwareId(hbase, hardwareId);
+		existing.setDeleted(true);
 		byte[] primary = getPrimaryRowkey(deviceId);
 		if (force) {
 			IdManager.getInstance().getDeviceKeys().delete(hardwareId);
@@ -286,7 +287,7 @@ public class HBaseDevice {
 			}
 		} else {
 			byte[] marker = { (byte) 0x01 };
-			existing.setDeleted(true);
+			SiteWherePersistence.setUpdatedEntityMetadata(existing);
 			byte[] updated = MarshalUtils.marshalJson(existing);
 			byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, SiteWhereHBaseConstants.DELETED };
 			byte[][] values = { updated, marker };

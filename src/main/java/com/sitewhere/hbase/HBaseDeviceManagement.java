@@ -471,10 +471,14 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseSite.createSite(hbase, request);
 	}
 
-	@Override
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.spi.device.IDeviceManagement#deleteSite(java.lang.String,
+	 * boolean)
+	 */
 	public ISite deleteSite(String siteToken, boolean force) throws SiteWhereException {
-		// TODO Auto-generated method stub
-		return null;
+		return HBaseSite.deleteSite(hbase, siteToken, force);
 	}
 
 	/*

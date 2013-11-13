@@ -260,6 +260,7 @@ public class HBaseDeviceAssignment {
 			throw new SiteWhereSystemException(ErrorCode.InvalidDeviceAssignmentToken, ErrorLevel.ERROR);
 		}
 		DeviceAssignment existing = getDeviceAssignment(hbase, token);
+		existing.setDeleted(true);
 		HBaseDevice.removeDeviceAssignment(hbase, existing.getDeviceHardwareId());
 		if (force) {
 			IdManager.getInstance().getAssignmentKeys().delete(token);
@@ -271,7 +272,7 @@ public class HBaseDeviceAssignment {
 			}
 		} else {
 			byte[] marker = { (byte) 0x01 };
-			existing.setDeleted(true);
+			SiteWherePersistence.setUpdatedEntityMetadata(existing);
 			byte[] updated = MarshalUtils.marshalJson(existing);
 			byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, SiteWhereHBaseConstants.DELETED };
 			byte[][] values = { updated, marker };
