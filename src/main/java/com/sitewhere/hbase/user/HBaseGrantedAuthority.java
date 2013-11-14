@@ -89,7 +89,9 @@ public class HBaseGrantedAuthority {
 				ISiteWhereHBase.FAMILY_ID).qualifier(ISiteWhereHBase.JSON_CONTENT);
 		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
 				"Unable to load granted authority by name.");
-		if (results.size() != 1) {
+		if (results.size() == 0) {
+			return null;
+		} else if (results.size() > 1) {
 			throw new SiteWhereException("Expected one JSON entry for granted authority and found: "
 					+ results.size());
 		}

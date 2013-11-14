@@ -156,7 +156,10 @@ public class HBaseUser {
 				ISiteWhereHBase.FAMILY_ID).qualifier(ISiteWhereHBase.JSON_CONTENT);
 		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
 				"Unable to load user by username.");
-		if (results.size() != 1) {
+		if (results.size() == 0) {
+			return null;
+		}
+		if (results.size() > 1) {
 			throw new SiteWhereException("Expected one JSON entry for user and found: " + results.size());
 		}
 		byte[] json = results.get(0).value();
