@@ -9,7 +9,7 @@
  */
 package com.sitewhere.hbase.uid;
 
-import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -50,7 +50,7 @@ public class IdManager {
 	 * @param hbase
 	 * @throws SiteWhereException
 	 */
-	public void load(HBaseConnectivity hbase) throws SiteWhereException {
+	public void load(SiteWhereHBaseClient hbase) throws SiteWhereException {
 		siteKeys = new UnqiueIdCounterMap(hbase, UniqueIdType.SiteKey, UniqueIdType.SiteValue);
 		siteKeys.refresh();
 		deviceKeys = new UnqiueIdCounterMap(hbase, UniqueIdType.DeviceKey, UniqueIdType.DeviceValue);

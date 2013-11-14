@@ -32,7 +32,7 @@ import org.hbase.async.PutRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.device.SiteWherePersistence;
 import com.sitewhere.hbase.DataUtils;
-import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.common.SiteWhereTables;
@@ -82,7 +82,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static ISite createSite(HBaseConnectivity hbase, ISiteCreateRequest request)
+	public static ISite createSite(SiteWhereHBaseClient hbase, ISiteCreateRequest request)
 			throws SiteWhereException {
 		String uuid = IdManager.getInstance().getSiteKeys().createUniqueId();
 		Long value = IdManager.getInstance().getSiteKeys().getValue(uuid);
@@ -111,7 +111,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Site getSiteByToken(HBaseConnectivity hbase, String token) throws SiteWhereException {
+	public static Site getSiteByToken(SiteWhereHBaseClient hbase, String token) throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(token);
 		if (siteId == null) {
 			return null;
@@ -142,7 +142,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Site updateSite(HBaseConnectivity hbase, String token, ISiteCreateRequest request)
+	public static Site updateSite(SiteWhereHBaseClient hbase, String token, ISiteCreateRequest request)
 			throws SiteWhereException {
 		Site updated = getSiteByToken(hbase, token);
 		if (updated == null) {
@@ -169,7 +169,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<ISite> listSites(HBaseConnectivity hbase, ISearchCriteria criteria)
+	public static SearchResults<ISite> listSites(SiteWhereHBaseClient hbase, ISearchCriteria criteria)
 			throws SiteWhereException {
 		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, REGEX_SITE);
 		List<ISite> response = new ArrayList<ISite>();
@@ -188,7 +188,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceAssignment> listDeviceAssignmentsForSite(HBaseConnectivity hbase,
+	public static SearchResults<IDeviceAssignment> listDeviceAssignmentsForSite(SiteWhereHBaseClient hbase,
 			String siteToken, ISearchCriteria criteria) throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(siteToken);
 		if (siteId == null) {
@@ -214,7 +214,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IZone> listZonesForSite(HBaseConnectivity hbase, String siteToken,
+	public static SearchResults<IZone> listZonesForSite(SiteWhereHBaseClient hbase, String siteToken,
 			ISearchCriteria criteria) throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(siteToken);
 		if (siteId == null) {
@@ -240,7 +240,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static ArrayList<byte[]> getFilteredSiteRows(HBaseConnectivity hbase, boolean includeDeleted,
+	public static ArrayList<byte[]> getFilteredSiteRows(SiteWhereHBaseClient hbase, boolean includeDeleted,
 			ISearchCriteria criteria, String filterRegex) throws SiteWhereException {
 		HTable sites = SiteWhereTables.getHTable(hbase, ISiteWhereHBase.SITES_TABLE_NAME);
 		ResultScanner scanner = null;
@@ -290,7 +290,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Site deleteSite(HBaseConnectivity hbase, String token, boolean force)
+	public static Site deleteSite(SiteWhereHBaseClient hbase, String token, boolean force)
 			throws SiteWhereException {
 		Site existing = getSiteByToken(hbase, token);
 		if (existing == null) {
@@ -329,7 +329,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Long allocateNextZoneId(HBaseConnectivity hbase, Long siteId) throws SiteWhereException {
+	public static Long allocateNextZoneId(SiteWhereHBaseClient hbase, Long siteId) throws SiteWhereException {
 		byte[] primary = getPrimaryRowkey(siteId);
 		AtomicIncrementRequest request = new AtomicIncrementRequest(ISiteWhereHBase.SITES_TABLE_NAME,
 				primary, ISiteWhereHBase.FAMILY_ID, ZONE_COUNTER, -1);
@@ -349,7 +349,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Long allocateNextAssignmentId(HBaseConnectivity hbase, Long siteId)
+	public static Long allocateNextAssignmentId(SiteWhereHBaseClient hbase, Long siteId)
 			throws SiteWhereException {
 		byte[] primary = getPrimaryRowkey(siteId);
 		AtomicIncrementRequest request = new AtomicIncrementRequest(ISiteWhereHBase.SITES_TABLE_NAME,

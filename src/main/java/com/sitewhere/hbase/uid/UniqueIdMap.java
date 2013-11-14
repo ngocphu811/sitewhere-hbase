@@ -23,7 +23,7 @@ import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 import org.hbase.async.Scanner;
 
-import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.device.HBasePersistence;
 import com.sitewhere.spi.SiteWhereException;
@@ -42,7 +42,7 @@ public abstract class UniqueIdMap<N, V> {
 	public static final byte[] VALUE_QUAL = Bytes.UTF8("value");
 
 	/** HBase client */
-	protected HBaseConnectivity hbase;
+	protected SiteWhereHBaseClient hbase;
 
 	/** Key type indicator */
 	protected UniqueIdType keyIndicator;
@@ -56,7 +56,7 @@ public abstract class UniqueIdMap<N, V> {
 	/** Maps of values to names */
 	private Map<V, N> valueToName = new HashMap<V, N>();
 
-	public UniqueIdMap(HBaseConnectivity hbase, UniqueIdType keyIndicator, UniqueIdType valueIndicator) {
+	public UniqueIdMap(SiteWhereHBaseClient hbase, UniqueIdType keyIndicator, UniqueIdType valueIndicator) {
 		this.hbase = hbase;
 		this.keyIndicator = keyIndicator;
 		this.valueIndicator = valueIndicator;
@@ -314,7 +314,7 @@ public abstract class UniqueIdMap<N, V> {
 	public abstract byte[] convertValue(V value);
 
 	/** Get HBase connectivity accessor */
-	public HBaseConnectivity getHbase() {
+	public SiteWhereHBaseClient getHbase() {
 		return hbase;
 	}
 

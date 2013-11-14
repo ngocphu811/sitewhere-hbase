@@ -19,7 +19,7 @@ import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 
-import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.spi.SiteWhereException;
 
@@ -30,7 +30,7 @@ import com.sitewhere.spi.SiteWhereException;
  */
 public class UnqiueIdCounterMap extends UniqueIdMap<String, Long> {
 
-	public UnqiueIdCounterMap(HBaseConnectivity hbase, UniqueIdType keyIndicator, UniqueIdType valueIndicator) {
+	public UnqiueIdCounterMap(SiteWhereHBaseClient hbase, UniqueIdType keyIndicator, UniqueIdType valueIndicator) {
 		super(hbase, keyIndicator, valueIndicator);
 	}
 

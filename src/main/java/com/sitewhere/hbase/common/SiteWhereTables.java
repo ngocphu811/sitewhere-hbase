@@ -17,7 +17,7 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.log4j.Logger;
 
-import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.spi.SiteWhereException;
 
@@ -38,7 +38,7 @@ public class SiteWhereTables {
 	 * @param tableName
 	 * @throws SiteWhereException
 	 */
-	public static void assureTable(HBaseConnectivity hbase, byte[] tableName, BloomType bloom)
+	public static void assureTable(SiteWhereHBaseClient hbase, byte[] tableName, BloomType bloom)
 			throws SiteWhereException {
 		try {
 			String tnameStr = new String(tableName);
@@ -66,7 +66,7 @@ public class SiteWhereTables {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static HTable getHTable(HBaseConnectivity hbase, byte[] tableName) throws SiteWhereException {
+	public static HTable getHTable(SiteWhereHBaseClient hbase, byte[] tableName) throws SiteWhereException {
 		try {
 			return new HTable(hbase.getAdmin().getConfiguration(), ISiteWhereHBase.SITES_TABLE_NAME);
 		} catch (IOException e) {

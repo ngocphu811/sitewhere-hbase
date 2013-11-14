@@ -20,7 +20,7 @@ import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 
 import com.sitewhere.core.device.SiteWherePersistence;
-import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
@@ -62,7 +62,7 @@ public class HBaseDeviceAssignment {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDeviceAssignment createDeviceAssignment(HBaseConnectivity hbase,
+	public static IDeviceAssignment createDeviceAssignment(SiteWhereHBaseClient hbase,
 			IDeviceAssignmentCreateRequest request) throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(request.getSiteToken());
 		if (siteId == null) {
@@ -108,7 +108,7 @@ public class HBaseDeviceAssignment {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static DeviceAssignment getDeviceAssignment(HBaseConnectivity hbase, String token)
+	public static DeviceAssignment getDeviceAssignment(SiteWhereHBaseClient hbase, String token)
 			throws SiteWhereException {
 		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		if (rowkey == null) {
@@ -136,7 +136,7 @@ public class HBaseDeviceAssignment {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static DeviceAssignment updateDeviceAssignmentMetadata(HBaseConnectivity hbase, String token,
+	public static DeviceAssignment updateDeviceAssignmentMetadata(SiteWhereHBaseClient hbase, String token,
 			IMetadataProvider metadata) throws SiteWhereException {
 		DeviceAssignment updated = getDeviceAssignment(hbase, token);
 		updated.setMetadata(new ArrayList<MetadataEntry>());
@@ -160,7 +160,7 @@ public class HBaseDeviceAssignment {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static DeviceAssignment updateDeviceAssignmentLocation(HBaseConnectivity hbase, String token,
+	public static DeviceAssignment updateDeviceAssignmentLocation(SiteWhereHBaseClient hbase, String token,
 			IDeviceLocationCreateRequest request) throws SiteWhereException {
 		DeviceAssignment updated = getDeviceAssignment(hbase, token);
 		DeviceLocation location = HBaseDeviceEvent.createDeviceLocationForRequest(updated, request);
@@ -187,7 +187,7 @@ public class HBaseDeviceAssignment {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static DeviceAssignment updateDeviceAssignmentStatus(HBaseConnectivity hbase, String token,
+	public static DeviceAssignment updateDeviceAssignmentStatus(SiteWhereHBaseClient hbase, String token,
 			DeviceAssignmentStatus status) throws SiteWhereException {
 		DeviceAssignment updated = getDeviceAssignment(hbase, token);
 		updated.setStatus(status);
@@ -211,7 +211,7 @@ public class HBaseDeviceAssignment {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static DeviceAssignment endDeviceAssignment(HBaseConnectivity hbase, String token)
+	public static DeviceAssignment endDeviceAssignment(SiteWhereHBaseClient hbase, String token)
 			throws SiteWhereException {
 		DeviceAssignment updated = getDeviceAssignment(hbase, token);
 		updated.setStatus(DeviceAssignmentStatus.Released);
@@ -244,7 +244,7 @@ public class HBaseDeviceAssignment {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDeviceAssignment deleteDeviceAssignment(HBaseConnectivity hbase, String token,
+	public static IDeviceAssignment deleteDeviceAssignment(SiteWhereHBaseClient hbase, String token,
 			boolean force) throws SiteWhereException {
 		byte[] assnId = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		if (assnId == null) {

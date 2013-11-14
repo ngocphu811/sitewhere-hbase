@@ -24,7 +24,7 @@ import org.hbase.async.Scanner;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.hbase.DataUtils;
-import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
@@ -72,7 +72,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDeviceMeasurements createDeviceMeasurements(HBaseConnectivity hbase,
+	public static IDeviceMeasurements createDeviceMeasurements(SiteWhereHBaseClient hbase,
 			IDeviceAssignment assignment, IDeviceMeasurementsCreateRequest request) throws SiteWhereException {
 		long time = getEventTime(request);
 		byte[] assnKey = IdManager.getInstance().getAssignmentKeys().getValue(assignment.getToken());
@@ -118,7 +118,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceMeasurements> listDeviceMeasurements(HBaseConnectivity hbase,
+	public static SearchResults<IDeviceMeasurements> listDeviceMeasurements(SiteWhereHBaseClient hbase,
 			String assnToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getEventRowsForAssignment(hbase, assnToken,
 				DeviceAssignmentRecordType.Measurement, criteria);
@@ -134,7 +134,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceMeasurements> listDeviceMeasurementsForSite(HBaseConnectivity hbase,
+	public static SearchResults<IDeviceMeasurements> listDeviceMeasurementsForSite(SiteWhereHBaseClient hbase,
 			String siteToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getEventRowsForSite(hbase, siteToken,
 				DeviceAssignmentRecordType.Measurement, criteria);
@@ -150,7 +150,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDeviceLocation createDeviceLocation(HBaseConnectivity hbase, IDeviceAssignment assignment,
+	public static IDeviceLocation createDeviceLocation(SiteWhereHBaseClient hbase, IDeviceAssignment assignment,
 			IDeviceLocationCreateRequest request) throws SiteWhereException {
 		long time = getEventTime(request);
 		byte[] assnKey = IdManager.getInstance().getAssignmentKeys().getValue(assignment.getToken());
@@ -201,7 +201,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceLocation> listDeviceLocations(HBaseConnectivity hbase,
+	public static SearchResults<IDeviceLocation> listDeviceLocations(SiteWhereHBaseClient hbase,
 			String assnToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getEventRowsForAssignment(hbase, assnToken,
 				DeviceAssignmentRecordType.Location, criteria);
@@ -217,7 +217,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceLocation> listDeviceLocationsForSite(HBaseConnectivity hbase,
+	public static SearchResults<IDeviceLocation> listDeviceLocationsForSite(SiteWhereHBaseClient hbase,
 			String siteToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getEventRowsForSite(hbase, siteToken,
 				DeviceAssignmentRecordType.Location, criteria);
@@ -233,7 +233,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDeviceAlert createDeviceAlert(HBaseConnectivity hbase, IDeviceAssignment assignment,
+	public static IDeviceAlert createDeviceAlert(SiteWhereHBaseClient hbase, IDeviceAssignment assignment,
 			IDeviceAlertCreateRequest request) throws SiteWhereException {
 		long time = getEventTime(request);
 		byte[] assnKey = IdManager.getInstance().getAssignmentKeys().getValue(assignment.getToken());
@@ -280,7 +280,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceAlert> listDeviceAlerts(HBaseConnectivity hbase, String assnToken,
+	public static SearchResults<IDeviceAlert> listDeviceAlerts(SiteWhereHBaseClient hbase, String assnToken,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getEventRowsForAssignment(hbase, assnToken,
 				DeviceAssignmentRecordType.Alert, criteria);
@@ -296,7 +296,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceAlert> listDeviceAlertsForSite(HBaseConnectivity hbase,
+	public static SearchResults<IDeviceAlert> listDeviceAlertsForSite(SiteWhereHBaseClient hbase,
 			String siteToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getEventRowsForSite(hbase, siteToken,
 				DeviceAssignmentRecordType.Measurement, criteria);
@@ -314,7 +314,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	protected static ArrayList<KeyValue> getEventRowsForAssignment(HBaseConnectivity hbase, String assnToken,
+	protected static ArrayList<KeyValue> getEventRowsForAssignment(SiteWhereHBaseClient hbase, String assnToken,
 			DeviceAssignmentRecordType eventType, IDateRangeSearchCriteria criteria)
 			throws SiteWhereException {
 		byte[] assnKey = IdManager.getInstance().getAssignmentKeys().getValue(assnToken);
@@ -402,7 +402,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	protected static ArrayList<KeyValue> getEventRowsForSite(HBaseConnectivity hbase, String siteToken,
+	protected static ArrayList<KeyValue> getEventRowsForSite(SiteWhereHBaseClient hbase, String siteToken,
 			DeviceAssignmentRecordType eventType, IDateRangeSearchCriteria criteria)
 			throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(siteToken);

@@ -20,7 +20,7 @@ import org.hbase.async.PutRequest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.device.SiteWherePersistence;
-import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
@@ -52,7 +52,7 @@ public class HBaseZone {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IZone createZone(HBaseConnectivity hbase, ISite site, IZoneCreateRequest request)
+	public static IZone createZone(SiteWhereHBaseClient hbase, ISite site, IZoneCreateRequest request)
 			throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(site.getToken());
 		if (siteId == null) {
@@ -87,7 +87,7 @@ public class HBaseZone {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Zone updateZone(HBaseConnectivity hbase, String token, IZoneCreateRequest request)
+	public static Zone updateZone(SiteWhereHBaseClient hbase, String token, IZoneCreateRequest request)
 			throws SiteWhereException {
 		Zone updated = getZone(hbase, token);
 
@@ -110,7 +110,7 @@ public class HBaseZone {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Zone getZone(HBaseConnectivity hbase, String token) throws SiteWhereException {
+	public static Zone getZone(SiteWhereHBaseClient hbase, String token) throws SiteWhereException {
 		byte[] rowkey = IdManager.getInstance().getZoneKeys().getValue(token);
 		if (rowkey == null) {
 			throw new SiteWhereSystemException(ErrorCode.InvalidZoneToken, ErrorLevel.ERROR);
@@ -141,7 +141,7 @@ public class HBaseZone {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Zone deleteZone(HBaseConnectivity hbase, String token, boolean force)
+	public static Zone deleteZone(SiteWhereHBaseClient hbase, String token, boolean force)
 			throws SiteWhereException {
 		byte[] zoneId = IdManager.getInstance().getZoneKeys().getValue(token);
 		if (zoneId == null) {

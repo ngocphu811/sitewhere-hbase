@@ -24,7 +24,7 @@ import org.hbase.async.PutRequest;
 import org.hbase.async.Scanner;
 
 import com.sitewhere.core.device.SiteWherePersistence;
-import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
@@ -68,7 +68,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDevice createDevice(HBaseConnectivity hbase, IDeviceCreateRequest request)
+	public static IDevice createDevice(SiteWhereHBaseClient hbase, IDeviceCreateRequest request)
 			throws SiteWhereException {
 		Long existing = IdManager.getInstance().getDeviceKeys().getValue(request.getHardwareId());
 		if (existing != null) {
@@ -98,7 +98,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDevice updateDevice(HBaseConnectivity hbase, String hardwareId,
+	public static IDevice updateDevice(SiteWhereHBaseClient hbase, String hardwareId,
 			IDeviceCreateRequest request) throws SiteWhereException {
 
 		// Can not update the hardware id on a device.
@@ -133,7 +133,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDevice> listDevices(HBaseConnectivity hbase, boolean includeDeleted,
+	public static SearchResults<IDevice> listDevices(SiteWhereHBaseClient hbase, boolean includeDeleted,
 			ISearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getFilteredDevices(hbase, includeDeleted, false, criteria);
 		List<IDevice> response = new ArrayList<IDevice>();
@@ -151,7 +151,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDevice> listUnassignedDevices(HBaseConnectivity hbase,
+	public static SearchResults<IDevice> listUnassignedDevices(SiteWhereHBaseClient hbase,
 			ISearchCriteria criteria) throws SiteWhereException {
 		ArrayList<KeyValue> matches = getFilteredDevices(hbase, false, true, criteria);
 		List<IDevice> response = new ArrayList<IDevice>();
@@ -171,7 +171,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	protected static ArrayList<KeyValue> getFilteredDevices(HBaseConnectivity hbase, boolean includeDeleted,
+	protected static ArrayList<KeyValue> getFilteredDevices(SiteWhereHBaseClient hbase, boolean includeDeleted,
 			boolean excludeAssigned, ISearchCriteria criteria) throws SiteWhereException {
 		Scanner scanner = hbase.getClient().newScanner(ISiteWhereHBase.DEVICES_TABLE_NAME);
 		try {
@@ -218,7 +218,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Device putDeviceJson(HBaseConnectivity hbase, Device device) throws SiteWhereException {
+	public static Device putDeviceJson(SiteWhereHBaseClient hbase, Device device) throws SiteWhereException {
 		Long value = IdManager.getInstance().getDeviceKeys().getValue(device.getHardwareId());
 		if (value == null) {
 			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
@@ -242,7 +242,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Device getDeviceByHardwareId(HBaseConnectivity hbase, String hardwareId)
+	public static Device getDeviceByHardwareId(SiteWhereHBaseClient hbase, String hardwareId)
 			throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
@@ -274,7 +274,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDevice deleteDevice(HBaseConnectivity hbase, String hardwareId, boolean force)
+	public static IDevice deleteDevice(SiteWhereHBaseClient hbase, String hardwareId, boolean force)
 			throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
@@ -312,7 +312,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static String getCurrentAssignmentId(HBaseConnectivity hbase, String hardwareId)
+	public static String getCurrentAssignmentId(SiteWhereHBaseClient hbase, String hardwareId)
 			throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
@@ -341,7 +341,7 @@ public class HBaseDevice {
 	 * @param assignmentToken
 	 * @throws SiteWhereException
 	 */
-	public static void setDeviceAssignment(HBaseConnectivity hbase, String hardwareId, String assignmentToken)
+	public static void setDeviceAssignment(SiteWhereHBaseClient hbase, String hardwareId, String assignmentToken)
 			throws SiteWhereException {
 		String existing = getCurrentAssignmentId(hbase, hardwareId);
 		if (existing != null) {
@@ -373,7 +373,7 @@ public class HBaseDevice {
 	 * @param hardwareId
 	 * @throws SiteWhereException
 	 */
-	public static void removeDeviceAssignment(HBaseConnectivity hbase, String hardwareId)
+	public static void removeDeviceAssignment(SiteWhereHBaseClient hbase, String hardwareId)
 			throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
@@ -409,7 +409,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceAssignment> getDeviceAssignmentHistory(HBaseConnectivity hbase,
+	public static SearchResults<IDeviceAssignment> getDeviceAssignmentHistory(SiteWhereHBaseClient hbase,
 			String hardwareId) throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {

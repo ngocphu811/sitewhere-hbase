@@ -16,7 +16,7 @@ import org.hbase.async.GetRequest;
 import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 
-import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -35,7 +35,7 @@ public class HBasePersistence {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Object syncPut(HBaseConnectivity hbase, PutRequest request, String errorMessage)
+	public static Object syncPut(SiteWhereHBaseClient hbase, PutRequest request, String errorMessage)
 			throws SiteWhereException {
 		try {
 			request.setBufferable(false);
@@ -54,7 +54,7 @@ public class HBasePersistence {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Object syncDelete(HBaseConnectivity hbase, DeleteRequest request, String errorMessage)
+	public static Object syncDelete(SiteWhereHBaseClient hbase, DeleteRequest request, String errorMessage)
 			throws SiteWhereException {
 		try {
 			request.setBufferable(false);
@@ -73,7 +73,7 @@ public class HBasePersistence {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static ArrayList<KeyValue> syncGet(HBaseConnectivity hbase, GetRequest request, String errorMessage)
+	public static ArrayList<KeyValue> syncGet(SiteWhereHBaseClient hbase, GetRequest request, String errorMessage)
 			throws SiteWhereException {
 		try {
 			return hbase.getClient().get(request).joinUninterruptibly();

@@ -16,6 +16,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.log4j.Logger;
 import org.hbase.async.HBaseClient;
+import org.springframework.beans.factory.InitializingBean;
 
 import com.sitewhere.spi.SiteWhereException;
 
@@ -24,13 +25,13 @@ import com.sitewhere.spi.SiteWhereException;
  * 
  * @author Derek
  */
-public class HBaseConnectivity {
+public class SiteWhereHBaseClient implements InitializingBean {
 
 	/** Static logger instance */
-	private static final Logger LOGGER = Logger.getLogger(HBaseConnectivity.class);
+	private static final Logger LOGGER = Logger.getLogger(SiteWhereHBaseClient.class);
 
 	/** Zookeeper quorum */
-	String quorum;
+	private String quorum;
 
 	/** Singleton HBase client instance */
 	private HBaseClient client;
@@ -38,26 +39,25 @@ public class HBaseConnectivity {
 	/** Standard admin interface */
 	private HBaseAdmin admin;
 
-	/**
-	 * Start connectivity.
+	/*
+	 * (non-Javadoc)
 	 * 
-	 * @param quorum
-	 * @throws SiteWhereException
+	 * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet()
 	 */
-	public void start(String quorum) throws SiteWhereException {
-		setClient(new HBaseClient(quorum));
+	public void afterPropertiesSet() throws Exception {
+		this.client = new HBaseClient(quorum);
 		getClient().setFlushInterval((short) 250);
 		try {
 			Configuration config = HBaseConfiguration.create();
 			config.set("hbase.zookeeper.quorum", quorum);
-			setAdmin(new HBaseAdmin(config));
+			this.admin = new HBaseAdmin(config);
 		} catch (Exception e) {
 			throw new SiteWhereException(e);
 		}
 	}
 
 	/**
-	 * Stop all connectivity.
+	 * Stop all connectivity. TODO: Where does this eventually get called?
 	 */
 	public void stop() {
 		if (getClient() != null) {
@@ -80,16 +80,15 @@ public class HBaseConnectivity {
 		return client;
 	}
 
-	public void setClient(HBaseClient client) {
-		this.client = client;
-	}
-
 	public HBaseAdmin getAdmin() {
 		return admin;
 	}
 
-	public void setAdmin(HBaseAdmin admin) {
-		this.admin = admin;
+	public String getQuorum() {
+		return quorum;
 	}
 
+	public void setQuorum(String quorum) {
+		this.quorum = quorum;
+	}
 }
