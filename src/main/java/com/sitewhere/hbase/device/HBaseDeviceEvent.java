@@ -7,7 +7,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package com.sitewhere.hbase.model;
+package com.sitewhere.hbase.device;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -25,7 +25,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.hbase.DataUtils;
 import com.sitewhere.hbase.HBaseConnectivity;
-import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.common.MetadataProvider;
@@ -102,8 +102,8 @@ public class HBaseDeviceEvent {
 		}
 
 		// Create device measurements record. Fire and forget so errors only hit callback.
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.EVENTS_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, qualifier, json.getBytes());
+		PutRequest put = new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+				qualifier, json.getBytes());
 		hbase.getClient().put(put).addErrback(new PutFailedCallback());
 
 		return measurements;
@@ -164,8 +164,8 @@ public class HBaseDeviceEvent {
 		byte[] json = MarshalUtils.marshalJson(location);
 
 		// Create device location record. Fire and forget so errors only hit callback.
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.EVENTS_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, qualifier, json);
+		PutRequest put = new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+				qualifier, json);
 		hbase.getClient().put(put).addErrback(new PutFailedCallback());
 
 		return location;
@@ -264,8 +264,8 @@ public class HBaseDeviceEvent {
 		}
 
 		// Create device alert record. Fire and forget so errors only hit callback.
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.EVENTS_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, qualifier, json.getBytes());
+		PutRequest put = new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+				qualifier, json.getBytes());
 		hbase.getClient().put(put).addErrback(new PutFailedCallback());
 
 		return alert;
@@ -321,8 +321,8 @@ public class HBaseDeviceEvent {
 		if (assnKey == null) {
 			throw new SiteWhereSystemException(ErrorCode.InvalidDeviceAssignmentToken, ErrorLevel.ERROR);
 		}
-		Scanner scanner = hbase.getClient().newScanner(SiteWhereHBaseConstants.EVENTS_TABLE_NAME);
-		scanner.setFamily(SiteWhereHBaseConstants.FAMILY_ID);
+		Scanner scanner = hbase.getClient().newScanner(ISiteWhereHBase.EVENTS_TABLE_NAME);
+		scanner.setFamily(ISiteWhereHBase.FAMILY_ID);
 
 		// Note: Because time values are inverted, start and end keys are reversed.
 		byte[] startKey = null, endKey = null;
@@ -412,8 +412,8 @@ public class HBaseDeviceEvent {
 		byte[] startPrefix = HBaseSite.getAssignmentRowKey(siteId);
 		byte[] afterPrefix = HBaseSite.getAfterAssignmentRowKey(siteId);
 
-		Scanner scanner = hbase.getClient().newScanner(SiteWhereHBaseConstants.EVENTS_TABLE_NAME);
-		scanner.setFamily(SiteWhereHBaseConstants.FAMILY_ID);
+		Scanner scanner = hbase.getClient().newScanner(ISiteWhereHBase.EVENTS_TABLE_NAME);
+		scanner.setFamily(ISiteWhereHBase.FAMILY_ID);
 		scanner.setStartKey(startPrefix);
 		scanner.setStopKey(afterPrefix);
 		ArrayList<KeyValue> results = new ArrayList<KeyValue>();

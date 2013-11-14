@@ -7,19 +7,16 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package com.sitewhere.hbase;
+package com.sitewhere.hbase.device;
 
 import java.util.List;
 
 import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.log4j.Logger;
 
+import com.sitewhere.hbase.HBaseConnectivity;
+import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.SiteWhereTables;
-import com.sitewhere.hbase.model.HBaseDevice;
-import com.sitewhere.hbase.model.HBaseDeviceAssignment;
-import com.sitewhere.hbase.model.HBaseDeviceEvent;
-import com.sitewhere.hbase.model.HBaseSite;
-import com.sitewhere.hbase.model.HBaseZone;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.device.DeviceEventBatchResponse;
 import com.sitewhere.rest.service.search.SearchResults;
@@ -87,10 +84,10 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 	 * @throws SiteWhereException
 	 */
 	protected void ensureTablesExist() throws SiteWhereException {
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.UID_TABLE_NAME, BloomType.ROW);
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.SITES_TABLE_NAME, BloomType.ROW);
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.EVENTS_TABLE_NAME, BloomType.ROW);
-		SiteWhereTables.assureTable(hbase, SiteWhereHBaseConstants.DEVICES_TABLE_NAME, BloomType.ROW);
+		SiteWhereTables.assureTable(hbase, ISiteWhereHBase.UID_TABLE_NAME, BloomType.ROW);
+		SiteWhereTables.assureTable(hbase, ISiteWhereHBase.SITES_TABLE_NAME, BloomType.ROW);
+		SiteWhereTables.assureTable(hbase, ISiteWhereHBase.EVENTS_TABLE_NAME, BloomType.ROW);
+		SiteWhereTables.assureTable(hbase, ISiteWhereHBase.DEVICES_TABLE_NAME, BloomType.ROW);
 	}
 
 	/*

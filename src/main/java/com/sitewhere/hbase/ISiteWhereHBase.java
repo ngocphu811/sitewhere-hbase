@@ -16,7 +16,7 @@ import org.hbase.async.Bytes;
  * 
  * @author Derek
  */
-public interface SiteWhereHBaseConstants {
+public interface ISiteWhereHBase {
 
 	/***************
 	 * TABLE NAMES *

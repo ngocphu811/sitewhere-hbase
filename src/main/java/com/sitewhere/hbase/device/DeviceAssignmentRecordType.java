@@ -1,5 +1,5 @@
 /*
- * SiteRecordType.java 
+ * DeviceAssignmentRecordType.java 
  * --------------------------------------------------------------------------------------
  * Copyright (c) Reveal Technologies, LLC. All rights reserved. http://www.reveal-tech.com
  *
@@ -7,26 +7,26 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package com.sitewhere.hbase.model;
+package com.sitewhere.hbase.device;
 
 /**
- * Indicates site record type.
+ * Indicates device assignment record type.
  * 
  * @author Derek
  */
-public enum SiteRecordType {
+public enum DeviceAssignmentRecordType {
 
 	/** Primary site record */
 	Primary((byte) 0x00),
 
-	/** Zone record */
-	Zone((byte) 0x01),
+	/** Device measurement record */
+	Measurement((byte) 0x01),
 
-	/** Assignment record */
-	Assignment((byte) 0x02),
+	/** Device location record */
+	Location((byte) 0x02),
 
-	/** Assignment record */
-	End((byte) 0x03);
+	/** Device alert record */
+	Alert((byte) 0x03);
 
 	/** Type indicator */
 	private byte type;
@@ -36,7 +36,7 @@ public enum SiteRecordType {
 	 * 
 	 * @param value
 	 */
-	private SiteRecordType(byte type) {
+	private DeviceAssignmentRecordType(byte type) {
 		this.type = type;
 	}
 

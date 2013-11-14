@@ -7,7 +7,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package com.sitewhere.hbase.model;
+package com.sitewhere.hbase.device;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -21,7 +21,7 @@ import org.hbase.async.PutRequest;
 
 import com.sitewhere.core.device.SiteWherePersistence;
 import com.sitewhere.hbase.HBaseConnectivity;
-import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.common.MetadataEntry;
@@ -88,10 +88,10 @@ public class HBaseDeviceAssignment {
 				request.getSiteToken(), uuid);
 
 		byte[] json = MarshalUtils.marshalJson(newAssignment);
-		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, ASSIGNMENT_STATUS };
+		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ASSIGNMENT_STATUS };
 		byte[][] values = { json, DeviceAssignmentStatus.Active.name().getBytes() };
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+				qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to create device assignment.");
 
 		// Set the back reference from the device that indicates it is currently assigned.
@@ -115,8 +115,8 @@ public class HBaseDeviceAssignment {
 			throw new SiteWhereSystemException(ErrorCode.InvalidDeviceAssignmentToken, ErrorLevel.ERROR);
 		}
 
-		GetRequest request = new GetRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey).family(
-				SiteWhereHBaseConstants.FAMILY_ID).qualifier(SiteWhereHBaseConstants.JSON_CONTENT);
+		GetRequest request = new GetRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey).family(
+				ISiteWhereHBase.FAMILY_ID).qualifier(ISiteWhereHBase.JSON_CONTENT);
 		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
 				"Unable to load device assignment by token.");
 		if (results.size() != 1) {
@@ -145,8 +145,8 @@ public class HBaseDeviceAssignment {
 
 		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		byte[] json = MarshalUtils.marshalJson(updated);
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
+		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+				ISiteWhereHBase.JSON_CONTENT, json);
 		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment metadata.");
 		return updated;
 	}
@@ -170,10 +170,10 @@ public class HBaseDeviceAssignment {
 		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		byte[] json = MarshalUtils.marshalJson(updated);
 		byte[] locJson = MarshalUtils.marshalJson(location);
-		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, LAST_LOCATION };
+		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, LAST_LOCATION };
 		byte[][] values = { json, locJson };
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+				qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment location.");
 		return updated;
 	}
@@ -195,10 +195,10 @@ public class HBaseDeviceAssignment {
 
 		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		byte[] json = MarshalUtils.marshalJson(updated);
-		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, ASSIGNMENT_STATUS };
+		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ASSIGNMENT_STATUS };
 		byte[][] values = { json, status.name().getBytes() };
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+				qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment status.");
 		return updated;
 	}
@@ -224,10 +224,10 @@ public class HBaseDeviceAssignment {
 		// Update json and status qualifier.
 		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		byte[] json = MarshalUtils.marshalJson(updated);
-		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, ASSIGNMENT_STATUS };
+		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ASSIGNMENT_STATUS };
 		byte[][] values = { json, DeviceAssignmentStatus.Released.name().getBytes() };
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+				qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment status.");
 		return updated;
 	}
@@ -255,7 +255,7 @@ public class HBaseDeviceAssignment {
 		HBaseDevice.removeDeviceAssignment(hbase, existing.getDeviceHardwareId());
 		if (force) {
 			IdManager.getInstance().getAssignmentKeys().delete(token);
-			DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, assnId);
+			DeleteRequest delete = new DeleteRequest(ISiteWhereHBase.SITES_TABLE_NAME, assnId);
 			try {
 				hbase.getClient().delete(delete).joinUninterruptibly();
 			} catch (Exception e) {
@@ -265,10 +265,10 @@ public class HBaseDeviceAssignment {
 			byte[] marker = { (byte) 0x01 };
 			SiteWherePersistence.setUpdatedEntityMetadata(existing);
 			byte[] updated = MarshalUtils.marshalJson(existing);
-			byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, SiteWhereHBaseConstants.DELETED };
+			byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ISiteWhereHBase.DELETED };
 			byte[][] values = { updated, marker };
-			PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, assnId,
-					SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+			PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, assnId,
+					ISiteWhereHBase.FAMILY_ID, qualifiers, values);
 			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for device assignment.");
 		}
 		return existing;

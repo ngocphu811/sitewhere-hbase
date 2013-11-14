@@ -24,8 +24,8 @@ import org.hbase.async.PutRequest;
 import org.hbase.async.Scanner;
 
 import com.sitewhere.hbase.HBaseConnectivity;
-import com.sitewhere.hbase.SiteWhereHBaseConstants;
-import com.sitewhere.hbase.model.HBasePersistence;
+import com.sitewhere.hbase.ISiteWhereHBase;
+import com.sitewhere.hbase.device.HBasePersistence;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -100,8 +100,8 @@ public abstract class UniqueIdMap<N, V> {
 		nameBuffer.put(keyIndicator.getIndicator());
 		nameBuffer.put(nameBytes);
 		byte[] valueBytes = convertValue(value);
-		PutRequest namePut = new PutRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, nameBuffer.array(),
-				SiteWhereHBaseConstants.FAMILY_ID, VALUE_QUAL, valueBytes);
+		PutRequest namePut = new PutRequest(ISiteWhereHBase.UID_TABLE_NAME, nameBuffer.array(),
+				ISiteWhereHBase.FAMILY_ID, VALUE_QUAL, valueBytes);
 		HBasePersistence.syncPut(hbase, namePut, "Unable to store value mapping in UID table.");
 		nameToValue.put(name, value);
 	}
@@ -117,7 +117,7 @@ public abstract class UniqueIdMap<N, V> {
 		ByteBuffer nameBuffer = ByteBuffer.allocate(nameBytes.length + 1);
 		nameBuffer.put(keyIndicator.getIndicator());
 		nameBuffer.put(nameBytes);
-		DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, nameBuffer.array());
+		DeleteRequest delete = new DeleteRequest(ISiteWhereHBase.UID_TABLE_NAME, nameBuffer.array());
 		HBasePersistence.syncDelete(hbase, delete, "Unable to delete UID forward mapping.");
 		nameToValue.remove(name);
 	}
@@ -135,8 +135,8 @@ public abstract class UniqueIdMap<N, V> {
 		valueBuffer.put(valueIndicator.getIndicator());
 		valueBuffer.put(valueBytes);
 		byte[] nameBytes = convertName(name);
-		PutRequest valuePut = new PutRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, valueBuffer.array(),
-				SiteWhereHBaseConstants.FAMILY_ID, VALUE_QUAL, nameBytes);
+		PutRequest valuePut = new PutRequest(ISiteWhereHBase.UID_TABLE_NAME, valueBuffer.array(),
+				ISiteWhereHBase.FAMILY_ID, VALUE_QUAL, nameBytes);
 		HBasePersistence.syncPut(hbase, valuePut, "Unable to store value mapping in UID table.");
 		valueToName.put(value, name);
 	}
@@ -152,7 +152,7 @@ public abstract class UniqueIdMap<N, V> {
 		ByteBuffer valueBuffer = ByteBuffer.allocate(valueBytes.length + 1);
 		valueBuffer.put(valueIndicator.getIndicator());
 		valueBuffer.put(valueBytes);
-		DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, valueBuffer.array());
+		DeleteRequest delete = new DeleteRequest(ISiteWhereHBase.UID_TABLE_NAME, valueBuffer.array());
 		HBasePersistence.syncDelete(hbase, delete, "Unable to delete UID backward mapping.");
 		valueToName.remove(value);
 	}
@@ -196,7 +196,7 @@ public abstract class UniqueIdMap<N, V> {
 	 * @throws Exception
 	 */
 	protected List<KeyValue> getValuesForType(UniqueIdType type) throws Exception {
-		Scanner keyScanner = hbase.getClient().newScanner(SiteWhereHBaseConstants.UID_TABLE_NAME);
+		Scanner keyScanner = hbase.getClient().newScanner(ISiteWhereHBase.UID_TABLE_NAME);
 		byte startByte = keyIndicator.getIndicator();
 		byte stopByte = keyIndicator.getIndicator();
 		stopByte++;
@@ -244,7 +244,7 @@ public abstract class UniqueIdMap<N, V> {
 		ByteBuffer nameBuffer = ByteBuffer.allocate(nameBytes.length + 1);
 		nameBuffer.put(keyIndicator.getIndicator());
 		nameBuffer.put(nameBytes);
-		GetRequest request = new GetRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, nameBuffer.array());
+		GetRequest request = new GetRequest(ISiteWhereHBase.UID_TABLE_NAME, nameBuffer.array());
 		try {
 			ArrayList<KeyValue> matches = hbase.getClient().get(request).joinUninterruptibly();
 			if (matches.size() > 0) {
@@ -287,7 +287,7 @@ public abstract class UniqueIdMap<N, V> {
 		ByteBuffer valueBuffer = ByteBuffer.allocate(valueBytes.length + 1);
 		valueBuffer.put(valueIndicator.getIndicator());
 		valueBuffer.put(valueBytes);
-		GetRequest request = new GetRequest(SiteWhereHBaseConstants.UID_TABLE_NAME, valueBuffer.array());
+		GetRequest request = new GetRequest(ISiteWhereHBase.UID_TABLE_NAME, valueBuffer.array());
 		try {
 			ArrayList<KeyValue> matches = hbase.getClient().get(request).joinUninterruptibly();
 			if (matches.size() > 0) {

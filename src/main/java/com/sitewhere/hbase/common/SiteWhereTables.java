@@ -18,7 +18,7 @@ import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.log4j.Logger;
 
 import com.sitewhere.hbase.HBaseConnectivity;
-import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -45,7 +45,7 @@ public class SiteWhereTables {
 			if (!hbase.getAdmin().tableExists(tableName)) {
 				LOGGER.info("Table '" + tnameStr + "' does not exist. Creating table...");
 				HTableDescriptor table = new HTableDescriptor(tableName);
-				HColumnDescriptor family = new HColumnDescriptor(SiteWhereHBaseConstants.FAMILY_ID);
+				HColumnDescriptor family = new HColumnDescriptor(ISiteWhereHBase.FAMILY_ID);
 				family.setBloomFilterType(bloom);
 				table.addFamily(family);
 				hbase.getAdmin().createTable(table);
@@ -68,7 +68,7 @@ public class SiteWhereTables {
 	 */
 	public static HTable getHTable(HBaseConnectivity hbase, byte[] tableName) throws SiteWhereException {
 		try {
-			return new HTable(hbase.getAdmin().getConfiguration(), SiteWhereHBaseConstants.SITES_TABLE_NAME);
+			return new HTable(hbase.getAdmin().getConfiguration(), ISiteWhereHBase.SITES_TABLE_NAME);
 		} catch (IOException e) {
 			throw new SiteWhereException("Unable to open HTable.", e);
 		}

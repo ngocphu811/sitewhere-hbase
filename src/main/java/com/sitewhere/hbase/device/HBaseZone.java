@@ -7,7 +7,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package com.sitewhere.hbase.model;
+package com.sitewhere.hbase.device;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -21,7 +21,7 @@ import org.hbase.async.PutRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.device.SiteWherePersistence;
 import com.sitewhere.hbase.HBaseConnectivity;
-import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.device.Zone;
@@ -71,8 +71,8 @@ public class HBaseZone {
 		byte[] json = MarshalUtils.marshalJson(zone);
 
 		// Create zone record.
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
+		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+				ISiteWhereHBase.JSON_CONTENT, json);
 		HBasePersistence.syncPut(hbase, put, "Unable to create site.");
 
 		return zone;
@@ -96,8 +96,8 @@ public class HBaseZone {
 
 		byte[] zoneId = IdManager.getInstance().getZoneKeys().getValue(token);
 		byte[] json = MarshalUtils.marshalJson(updated);
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, zoneId,
-				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
+		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, zoneId, ISiteWhereHBase.FAMILY_ID,
+				ISiteWhereHBase.JSON_CONTENT, json);
 		HBasePersistence.syncPut(hbase, put, "Unable to update zone.");
 		return updated;
 	}
@@ -116,8 +116,8 @@ public class HBaseZone {
 			throw new SiteWhereSystemException(ErrorCode.InvalidZoneToken, ErrorLevel.ERROR);
 		}
 
-		GetRequest request = new GetRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey).family(
-				SiteWhereHBaseConstants.FAMILY_ID).qualifier(SiteWhereHBaseConstants.JSON_CONTENT);
+		GetRequest request = new GetRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey).family(
+				ISiteWhereHBase.FAMILY_ID).qualifier(ISiteWhereHBase.JSON_CONTENT);
 		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
 				"Unable to load zone by token.");
 		if (results.size() != 1) {
@@ -151,7 +151,7 @@ public class HBaseZone {
 		existing.setDeleted(true);
 		if (force) {
 			IdManager.getInstance().getZoneKeys().delete(token);
-			DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, zoneId);
+			DeleteRequest delete = new DeleteRequest(ISiteWhereHBase.SITES_TABLE_NAME, zoneId);
 			try {
 				hbase.getClient().delete(delete).joinUninterruptibly();
 			} catch (Exception e) {
@@ -161,10 +161,10 @@ public class HBaseZone {
 			byte[] marker = { (byte) 0x01 };
 			SiteWherePersistence.setUpdatedEntityMetadata(existing);
 			byte[] updated = MarshalUtils.marshalJson(existing);
-			byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, SiteWhereHBaseConstants.DELETED };
+			byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ISiteWhereHBase.DELETED };
 			byte[][] values = { updated, marker };
-			PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, zoneId,
-					SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+			PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, zoneId,
+					ISiteWhereHBase.FAMILY_ID, qualifiers, values);
 			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for zone.");
 		}
 		return existing;

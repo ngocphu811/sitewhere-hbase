@@ -7,7 +7,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package com.sitewhere.hbase.model;
+package com.sitewhere.hbase.device;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -33,7 +33,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.device.SiteWherePersistence;
 import com.sitewhere.hbase.DataUtils;
 import com.sitewhere.hbase.HBaseConnectivity;
-import com.sitewhere.hbase.SiteWhereHBaseConstants;
+import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.uid.IdManager;
@@ -94,10 +94,10 @@ public class HBaseSite {
 		// Create primary site record.
 		byte[] json = MarshalUtils.marshalJson(site);
 		byte[] maxLong = Bytes.fromLong(Long.MAX_VALUE);
-		byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, ZONE_COUNTER, ASSIGNMENT_COUNTER };
+		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ZONE_COUNTER, ASSIGNMENT_COUNTER };
 		byte[][] values = { json, maxLong, maxLong };
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, primary,
-				SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, primary, ISiteWhereHBase.FAMILY_ID,
+				qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to create site.");
 
 		return site;
@@ -117,8 +117,8 @@ public class HBaseSite {
 			return null;
 		}
 		byte[] primary = getPrimaryRowkey(siteId);
-		GetRequest request = new GetRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, primary).family(
-				SiteWhereHBaseConstants.FAMILY_ID).qualifier(SiteWhereHBaseConstants.JSON_CONTENT);
+		GetRequest request = new GetRequest(ISiteWhereHBase.SITES_TABLE_NAME, primary).family(
+				ISiteWhereHBase.FAMILY_ID).qualifier(ISiteWhereHBase.JSON_CONTENT);
 		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
 				"Unable to load site by token.");
 		if (results.size() != 1) {
@@ -155,8 +155,8 @@ public class HBaseSite {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(token);
 		byte[] rowkey = getPrimaryRowkey(siteId);
 		byte[] json = MarshalUtils.marshalJson(updated);
-		PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-				SiteWhereHBaseConstants.FAMILY_ID, SiteWhereHBaseConstants.JSON_CONTENT, json);
+		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+				ISiteWhereHBase.JSON_CONTENT, json);
 		HBasePersistence.syncPut(hbase, put, "Unable to update site.");
 		return updated;
 	}
@@ -242,7 +242,7 @@ public class HBaseSite {
 	 */
 	public static ArrayList<byte[]> getFilteredSiteRows(HBaseConnectivity hbase, boolean includeDeleted,
 			ISearchCriteria criteria, String filterRegex) throws SiteWhereException {
-		HTable sites = SiteWhereTables.getHTable(hbase, SiteWhereHBaseConstants.SITES_TABLE_NAME);
+		HTable sites = SiteWhereTables.getHTable(hbase, ISiteWhereHBase.SITES_TABLE_NAME);
 		ResultScanner scanner = null;
 		try {
 			RegexStringComparator regex = new RegexStringComparator(filterRegex);
@@ -257,10 +257,10 @@ public class HBaseSite {
 				byte[] json = null;
 				for (org.apache.hadoop.hbase.KeyValue column : result.raw()) {
 					byte[] qualifier = column.getQualifier();
-					if ((Bytes.equals(SiteWhereHBaseConstants.DELETED, qualifier)) && (!includeDeleted)) {
+					if ((Bytes.equals(ISiteWhereHBase.DELETED, qualifier)) && (!includeDeleted)) {
 						shouldAdd = false;
 					}
-					if (Bytes.equals(SiteWhereHBaseConstants.JSON_CONTENT, qualifier)) {
+					if (Bytes.equals(ISiteWhereHBase.JSON_CONTENT, qualifier)) {
 						json = column.getValue();
 					}
 				}
@@ -302,7 +302,7 @@ public class HBaseSite {
 		byte[] rowkey = getPrimaryRowkey(siteId);
 		if (force) {
 			IdManager.getInstance().getSiteKeys().delete(token);
-			DeleteRequest delete = new DeleteRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey);
+			DeleteRequest delete = new DeleteRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey);
 			try {
 				hbase.getClient().delete(delete).joinUninterruptibly();
 			} catch (Exception e) {
@@ -312,10 +312,10 @@ public class HBaseSite {
 			byte[] marker = { (byte) 0x01 };
 			SiteWherePersistence.setUpdatedEntityMetadata(existing);
 			byte[] updated = MarshalUtils.marshalJson(existing);
-			byte[][] qualifiers = { SiteWhereHBaseConstants.JSON_CONTENT, SiteWhereHBaseConstants.DELETED };
+			byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ISiteWhereHBase.DELETED };
 			byte[][] values = { updated, marker };
-			PutRequest put = new PutRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME, rowkey,
-					SiteWhereHBaseConstants.FAMILY_ID, qualifiers, values);
+			PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey,
+					ISiteWhereHBase.FAMILY_ID, qualifiers, values);
 			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for site.");
 		}
 		return existing;
@@ -331,8 +331,8 @@ public class HBaseSite {
 	 */
 	public static Long allocateNextZoneId(HBaseConnectivity hbase, Long siteId) throws SiteWhereException {
 		byte[] primary = getPrimaryRowkey(siteId);
-		AtomicIncrementRequest request = new AtomicIncrementRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME,
-				primary, SiteWhereHBaseConstants.FAMILY_ID, ZONE_COUNTER, -1);
+		AtomicIncrementRequest request = new AtomicIncrementRequest(ISiteWhereHBase.SITES_TABLE_NAME,
+				primary, ISiteWhereHBase.FAMILY_ID, ZONE_COUNTER, -1);
 		try {
 			return hbase.getClient().atomicIncrement(request).joinUninterruptibly();
 		} catch (Exception e) {
@@ -352,8 +352,8 @@ public class HBaseSite {
 	public static Long allocateNextAssignmentId(HBaseConnectivity hbase, Long siteId)
 			throws SiteWhereException {
 		byte[] primary = getPrimaryRowkey(siteId);
-		AtomicIncrementRequest request = new AtomicIncrementRequest(SiteWhereHBaseConstants.SITES_TABLE_NAME,
-				primary, SiteWhereHBaseConstants.FAMILY_ID, ASSIGNMENT_COUNTER, -1);
+		AtomicIncrementRequest request = new AtomicIncrementRequest(ISiteWhereHBase.SITES_TABLE_NAME,
+				primary, ISiteWhereHBase.FAMILY_ID, ASSIGNMENT_COUNTER, -1);
 		try {
 			return hbase.getClient().atomicIncrement(request).joinUninterruptibly();
 		} catch (Exception e) {
