@@ -91,7 +91,7 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 	 * @see com.sitewhere.spi.ISiteWhereLifecycle#stop()
 	 */
 	public void stop() throws SiteWhereException {
-		client.stop();
+		LOGGER.info("HBase device management stopped.");
 	}
 
 	/*

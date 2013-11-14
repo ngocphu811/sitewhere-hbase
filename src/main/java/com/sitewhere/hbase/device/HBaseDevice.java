@@ -23,7 +23,7 @@ import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 import org.hbase.async.Scanner;
 
-import com.sitewhere.core.device.SiteWherePersistence;
+import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.common.MarshalUtils;

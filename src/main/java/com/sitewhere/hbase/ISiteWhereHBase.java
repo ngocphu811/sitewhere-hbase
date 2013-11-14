@@ -37,9 +37,6 @@ public interface ISiteWhereHBase {
 	/** Users table name */
 	public static final byte[] USERS_TABLE_NAME = Bytes.UTF8("sw-users");
 
-	/** Authorities table name */
-	public static final byte[] AUTHORITIES_TABLE_NAME = Bytes.UTF8("sw-authorities");
-
 	/*******************
 	 * COLUMN FAMILIES *
 	 *******************/

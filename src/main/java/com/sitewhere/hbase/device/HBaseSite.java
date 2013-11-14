@@ -30,7 +30,7 @@ import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sitewhere.core.device.SiteWherePersistence;
+import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.DataUtils;
 import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
