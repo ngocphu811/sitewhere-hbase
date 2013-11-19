@@ -9,7 +9,6 @@
  */
 package com.sitewhere.hbase.device;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,9 +17,11 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.BinaryPrefixComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.RegexStringComparator;
 import org.apache.hadoop.hbase.filter.RowFilter;
+import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.log4j.Logger;
 import org.hbase.async.AtomicIncrementRequest;
 import org.hbase.async.Bytes;
@@ -31,9 +32,8 @@ import org.hbase.async.PutRequest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.SiteWherePersistence;
-import com.sitewhere.hbase.DataUtils;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.uid.IdManager;
@@ -171,7 +171,8 @@ public class HBaseSite {
 	 */
 	public static SearchResults<ISite> listSites(SiteWhereHBaseClient hbase, ISearchCriteria criteria)
 			throws SiteWhereException {
-		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, REGEX_SITE);
+		RegexStringComparator comparator = new RegexStringComparator(REGEX_SITE);
+		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, comparator, null, null);
 		List<ISite> response = new ArrayList<ISite>();
 		for (byte[] match : matches) {
 			response.add(MarshalUtils.unmarshalJson(match, Site.class));
@@ -195,9 +196,9 @@ public class HBaseSite {
 			throw new SiteWhereSystemException(ErrorCode.InvalidSiteToken, ErrorLevel.ERROR);
 		}
 		byte[] assnPrefix = getAssignmentRowKey(siteId);
-		String regex = "^" + DataUtils.regexHex(assnPrefix[0]) + DataUtils.regexHex(assnPrefix[1])
-				+ DataUtils.regexHex(assnPrefix[2]);
-		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, regex);
+		byte[] after = getAfterAssignmentRowKey(siteId);
+		BinaryPrefixComparator comparator = new BinaryPrefixComparator(assnPrefix);
+		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, comparator, assnPrefix, after);
 		List<IDeviceAssignment> response = new ArrayList<IDeviceAssignment>();
 		for (byte[] match : matches) {
 			response.add(MarshalUtils.unmarshalJson(match, DeviceAssignment.class));
@@ -221,9 +222,9 @@ public class HBaseSite {
 			throw new SiteWhereSystemException(ErrorCode.InvalidSiteToken, ErrorLevel.ERROR);
 		}
 		byte[] zonePrefix = getZoneRowKey(siteId);
-		String regex = "^" + DataUtils.regexHex(zonePrefix[0]) + DataUtils.regexHex(zonePrefix[1])
-				+ DataUtils.regexHex(zonePrefix[2]);
-		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, regex);
+		byte[] after = getAssignmentRowKey(siteId);
+		BinaryPrefixComparator comparator = new BinaryPrefixComparator(zonePrefix);
+		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, comparator, zonePrefix, after);
 		List<IZone> response = new ArrayList<IZone>();
 		for (byte[] match : matches) {
 			response.add(MarshalUtils.unmarshalJson(match, Zone.class));
@@ -241,13 +242,19 @@ public class HBaseSite {
 	 * @throws SiteWhereException
 	 */
 	public static ArrayList<byte[]> getFilteredSiteRows(SiteWhereHBaseClient hbase, boolean includeDeleted,
-			ISearchCriteria criteria, String filterRegex) throws SiteWhereException {
+			ISearchCriteria criteria, WritableByteArrayComparable comparator, byte[] startRow, byte[] stopRow)
+			throws SiteWhereException {
 		HTable sites = SiteWhereTables.getHTable(hbase, ISiteWhereHBase.SITES_TABLE_NAME);
 		ResultScanner scanner = null;
 		try {
-			RegexStringComparator regex = new RegexStringComparator(filterRegex);
-			RowFilter filter = new RowFilter(CompareOp.EQUAL, regex);
+			RowFilter filter = new RowFilter(CompareOp.EQUAL, comparator);
 			Scan scan = new Scan();
+			if (startRow != null) {
+				scan.setStartRow(startRow);
+			}
+			if (stopRow != null) {
+				scan.setStopRow(stopRow);
+			}
 			scan.setFilter(filter);
 			scanner = sites.getScanner(scan);
 
@@ -272,11 +279,13 @@ public class HBaseSite {
 		} catch (Exception e) {
 			throw new SiteWhereException("Error scanning site rows.", e);
 		} finally {
-			scanner.close();
 			try {
+				if (scanner != null) {
+					scanner.close();
+				}
 				sites.close();
-			} catch (IOException e) {
-				LOGGER.error("Error closing sites table.", e);
+			} catch (Throwable e) {
+				LOGGER.error("Error on site search cleanup.", e);
 			}
 		}
 	}
