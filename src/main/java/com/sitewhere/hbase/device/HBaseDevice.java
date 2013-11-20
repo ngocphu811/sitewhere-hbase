@@ -24,9 +24,10 @@ import org.hbase.async.PutRequest;
 import org.hbase.async.Scanner;
 
 import com.sitewhere.core.SiteWherePersistence;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.common.MarshalUtils;
+import com.sitewhere.hbase.common.Pager;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.Device;
@@ -135,12 +136,12 @@ public class HBaseDevice {
 	 */
 	public static SearchResults<IDevice> listDevices(SiteWhereHBaseClient hbase, boolean includeDeleted,
 			ISearchCriteria criteria) throws SiteWhereException {
-		ArrayList<KeyValue> matches = getFilteredDevices(hbase, includeDeleted, false, criteria);
+		Pager<byte[]> matches = getFilteredDevices(hbase, includeDeleted, false, criteria);
 		List<IDevice> response = new ArrayList<IDevice>();
-		for (KeyValue match : matches) {
-			response.add(MarshalUtils.unmarshalJson(match.value(), Device.class));
+		for (byte[] json : matches.getResults()) {
+			response.add(MarshalUtils.unmarshalJson(json, Device.class));
 		}
-		return new SearchResults<IDevice>(response);
+		return new SearchResults<IDevice>(response, matches.getTotal());
 	}
 
 	/**
@@ -153,12 +154,12 @@ public class HBaseDevice {
 	 */
 	public static SearchResults<IDevice> listUnassignedDevices(SiteWhereHBaseClient hbase,
 			ISearchCriteria criteria) throws SiteWhereException {
-		ArrayList<KeyValue> matches = getFilteredDevices(hbase, false, true, criteria);
+		Pager<byte[]> matches = getFilteredDevices(hbase, false, true, criteria);
 		List<IDevice> response = new ArrayList<IDevice>();
-		for (KeyValue match : matches) {
-			response.add(MarshalUtils.unmarshalJson(match.value(), Device.class));
+		for (byte[] json : matches.getResults()) {
+			response.add(MarshalUtils.unmarshalJson(json, Device.class));
 		}
-		return new SearchResults<IDevice>(response);
+		return new SearchResults<IDevice>(response, matches.getTotal());
 	}
 
 	/**
@@ -171,11 +172,11 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	protected static ArrayList<KeyValue> getFilteredDevices(SiteWhereHBaseClient hbase, boolean includeDeleted,
+	protected static Pager<byte[]> getFilteredDevices(SiteWhereHBaseClient hbase, boolean includeDeleted,
 			boolean excludeAssigned, ISearchCriteria criteria) throws SiteWhereException {
 		Scanner scanner = hbase.getClient().newScanner(ISiteWhereHBase.DEVICES_TABLE_NAME);
 		try {
-			ArrayList<KeyValue> matches = new ArrayList<KeyValue>();
+			Pager<byte[]> pager = new Pager<byte[]>(criteria);
 			ArrayList<ArrayList<KeyValue>> results;
 			while ((results = scanner.nextRows().joinUninterruptibly()) != null) {
 				for (ArrayList<KeyValue> row : results) {
@@ -194,11 +195,11 @@ public class HBaseDevice {
 						}
 					}
 					if ((shouldAdd) && (jsonColumn != null)) {
-						matches.add(jsonColumn);
+						pager.process(jsonColumn.value());
 					}
 				}
 			}
-			return matches;
+			return pager;
 		} catch (Exception e) {
 			throw new SiteWhereException("Error scanning results for listing devices.", e);
 		} finally {
@@ -341,8 +342,8 @@ public class HBaseDevice {
 	 * @param assignmentToken
 	 * @throws SiteWhereException
 	 */
-	public static void setDeviceAssignment(SiteWhereHBaseClient hbase, String hardwareId, String assignmentToken)
-			throws SiteWhereException {
+	public static void setDeviceAssignment(SiteWhereHBaseClient hbase, String hardwareId,
+			String assignmentToken) throws SiteWhereException {
 		String existing = getCurrentAssignmentId(hbase, hardwareId);
 		if (existing != null) {
 			throw new SiteWhereSystemException(ErrorCode.DeviceAlreadyAssigned, ErrorLevel.ERROR);
