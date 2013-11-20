@@ -411,7 +411,7 @@ public class HBaseDevice {
 	 * @throws SiteWhereException
 	 */
 	public static SearchResults<IDeviceAssignment> getDeviceAssignmentHistory(SiteWhereHBaseClient hbase,
-			String hardwareId) throws SiteWhereException {
+			String hardwareId, ISearchCriteria criteria) throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
 			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
@@ -419,17 +419,20 @@ public class HBaseDevice {
 		byte[] primary = getPrimaryRowkey(deviceId);
 		GetRequest get = new GetRequest(ISiteWhereHBase.DEVICES_TABLE_NAME, primary);
 		try {
-			List<IDeviceAssignment> results = new ArrayList<IDeviceAssignment>();
 			ArrayList<KeyValue> columns = hbase.getClient().get(get).joinUninterruptibly();
+			Pager<String> pager = new Pager<String>(criteria);
 			for (KeyValue column : columns) {
 				byte[] qualifier = column.qualifier();
 				if (qualifier[0] == ASSIGNMENT_HISTORY_INDICATOR) {
-					String token = new String(column.value());
-					DeviceAssignment assn = HBaseDeviceAssignment.getDeviceAssignment(hbase, token);
-					results.add(assn);
+					pager.process(new String(column.value()));
 				}
 			}
-			return new SearchResults<IDeviceAssignment>(results);
+			List<IDeviceAssignment> results = new ArrayList<IDeviceAssignment>();
+			for (String token : pager.getResults()) {
+				DeviceAssignment assn = HBaseDeviceAssignment.getDeviceAssignment(hbase, token);
+				results.add(assn);
+			}
+			return new SearchResults<IDeviceAssignment>(results, pager.getTotal());
 		} catch (Exception e) {
 			throw new SiteWhereException("Unable to load device assignment history.", e);
 		}

@@ -306,7 +306,7 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 	 */
 	public SearchResults<IDeviceAssignment> getDeviceAssignmentHistory(String hardwareId,
 			ISearchCriteria criteria) throws SiteWhereException {
-		return HBaseDevice.getDeviceAssignmentHistory(client, hardwareId);
+		return HBaseDevice.getDeviceAssignmentHistory(client, hardwareId, criteria);
 	}
 
 	/*
