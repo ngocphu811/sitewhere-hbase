@@ -35,6 +35,7 @@ import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.common.MarshalUtils;
+import com.sitewhere.hbase.common.Pager;
 import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.device.DeviceAssignment;
@@ -172,12 +173,12 @@ public class HBaseSite {
 	public static SearchResults<ISite> listSites(SiteWhereHBaseClient hbase, ISearchCriteria criteria)
 			throws SiteWhereException {
 		RegexStringComparator comparator = new RegexStringComparator(REGEX_SITE);
-		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, comparator, null, null);
+		Pager<byte[]> pager = getFilteredSiteRows(hbase, false, criteria, comparator, null, null);
 		List<ISite> response = new ArrayList<ISite>();
-		for (byte[] match : matches) {
+		for (byte[] match : pager.getResults()) {
 			response.add(MarshalUtils.unmarshalJson(match, Site.class));
 		}
-		return new SearchResults<ISite>(response);
+		return new SearchResults<ISite>(response, pager.getTotal());
 	}
 
 	/**
@@ -198,12 +199,12 @@ public class HBaseSite {
 		byte[] assnPrefix = getAssignmentRowKey(siteId);
 		byte[] after = getAfterAssignmentRowKey(siteId);
 		BinaryPrefixComparator comparator = new BinaryPrefixComparator(assnPrefix);
-		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, comparator, assnPrefix, after);
+		Pager<byte[]> pager = getFilteredSiteRows(hbase, false, criteria, comparator, assnPrefix, after);
 		List<IDeviceAssignment> response = new ArrayList<IDeviceAssignment>();
-		for (byte[] match : matches) {
+		for (byte[] match : pager.getResults()) {
 			response.add(MarshalUtils.unmarshalJson(match, DeviceAssignment.class));
 		}
-		return new SearchResults<IDeviceAssignment>(response);
+		return new SearchResults<IDeviceAssignment>(response, pager.getTotal());
 	}
 
 	/**
@@ -224,12 +225,12 @@ public class HBaseSite {
 		byte[] zonePrefix = getZoneRowKey(siteId);
 		byte[] after = getAssignmentRowKey(siteId);
 		BinaryPrefixComparator comparator = new BinaryPrefixComparator(zonePrefix);
-		ArrayList<byte[]> matches = getFilteredSiteRows(hbase, false, criteria, comparator, zonePrefix, after);
+		Pager<byte[]> pager = getFilteredSiteRows(hbase, false, criteria, comparator, zonePrefix, after);
 		List<IZone> response = new ArrayList<IZone>();
-		for (byte[] match : matches) {
+		for (byte[] match : pager.getResults()) {
 			response.add(MarshalUtils.unmarshalJson(match, Zone.class));
 		}
-		return new SearchResults<IZone>(response);
+		return new SearchResults<IZone>(response, pager.getTotal());
 	}
 
 	/**
@@ -241,13 +242,13 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static ArrayList<byte[]> getFilteredSiteRows(SiteWhereHBaseClient hbase, boolean includeDeleted,
+	public static Pager<byte[]> getFilteredSiteRows(SiteWhereHBaseClient hbase, boolean includeDeleted,
 			ISearchCriteria criteria, WritableByteArrayComparable comparator, byte[] startRow, byte[] stopRow)
 			throws SiteWhereException {
 		HTable sites = SiteWhereTables.getHTable(hbase, ISiteWhereHBase.SITES_TABLE_NAME);
 		ResultScanner scanner = null;
 		try {
-			RowFilter filter = new RowFilter(CompareOp.EQUAL, comparator);
+			RowFilter matcher = new RowFilter(CompareOp.EQUAL, comparator);
 			Scan scan = new Scan();
 			if (startRow != null) {
 				scan.setStartRow(startRow);
@@ -255,10 +256,10 @@ public class HBaseSite {
 			if (stopRow != null) {
 				scan.setStopRow(stopRow);
 			}
-			scan.setFilter(filter);
+			scan.setFilter(matcher);
 			scanner = sites.getScanner(scan);
 
-			ArrayList<byte[]> matches = new ArrayList<byte[]>();
+			Pager<byte[]> pager = new Pager<byte[]>(criteria);
 			for (Result result : scanner) {
 				boolean shouldAdd = true;
 				byte[] json = null;
@@ -272,10 +273,10 @@ public class HBaseSite {
 					}
 				}
 				if ((shouldAdd) && (json != null)) {
-					matches.add(json);
+					pager.process(json);
 				}
 			}
-			return matches;
+			return pager;
 		} catch (Exception e) {
 			throw new SiteWhereException("Error scanning site rows.", e);
 		} finally {
