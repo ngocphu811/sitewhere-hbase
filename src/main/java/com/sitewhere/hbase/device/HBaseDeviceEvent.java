@@ -28,8 +28,8 @@ import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.common.Pager;
 import com.sitewhere.hbase.uid.IdManager;
-import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.DeviceAlert;
+import com.sitewhere.rest.model.device.DeviceEvent;
 import com.sitewhere.rest.model.device.DeviceLocation;
 import com.sitewhere.rest.model.device.DeviceMeasurements;
 import com.sitewhere.rest.service.search.SearchResults;
@@ -38,6 +38,7 @@ import com.sitewhere.spi.SiteWhereSystemException;
 import com.sitewhere.spi.common.IDateRangeSearchCriteria;
 import com.sitewhere.spi.device.IDeviceAlert;
 import com.sitewhere.spi.device.IDeviceAssignment;
+import com.sitewhere.spi.device.IDeviceEvent;
 import com.sitewhere.spi.device.IDeviceLocation;
 import com.sitewhere.spi.device.IDeviceMeasurements;
 import com.sitewhere.spi.device.request.IDeviceAlertCreateRequest;
@@ -145,7 +146,7 @@ public class HBaseDeviceEvent {
 		byte[] rowkey = getRowKey(assnKey, time);
 		byte[] qualifier = getQualifier(DeviceAssignmentRecordType.Location, time);
 
-		DeviceLocation location = createDeviceLocationForRequest(assignment, request);
+		DeviceLocation location = SiteWherePersistence.deviceLocationCreateLogic(assignment, request);
 		byte[] json = MarshalUtils.marshalJson(location);
 
 		// Create device location record. Fire and forget so errors only hit callback.
@@ -153,27 +154,6 @@ public class HBaseDeviceEvent {
 				qualifier, json);
 		hbase.getClient().put(put).addErrback(new PutFailedCallback());
 
-		return location;
-	}
-
-	/**
-	 * Create a device location for the given create request.
-	 * 
-	 * @param assignment
-	 * @param request
-	 * @return
-	 */
-	public static DeviceLocation createDeviceLocationForRequest(IDeviceAssignment assignment,
-			IDeviceLocationCreateRequest request) {
-		DeviceLocation location = new DeviceLocation();
-		location.setSiteToken(assignment.getSiteToken());
-		location.setDeviceAssignmentToken(assignment.getToken());
-		location.setEventDate(request.getEventDate());
-		location.setReceivedDate(new Date());
-		location.setLatitude(request.getLatitude());
-		location.setLongitude(request.getLongitude());
-		location.setElevation(request.getElevation());
-		MetadataProvider.copy(request, location);
 		return location;
 	}
 
@@ -423,10 +403,12 @@ public class HBaseDeviceEvent {
 	 * Converts matching rows to {@link SearchResults} for web service response.
 	 * 
 	 * @param matches
+	 * @param jsonType
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	protected static <I, D> SearchResults<I> convertMatches(Pager<byte[]> matches, Class<D> jsonType) {
+	protected static <I extends IDeviceEvent, D extends DeviceEvent> SearchResults<I> convertMatches(
+			Pager<byte[]> matches, Class<D> jsonType) {
 		ObjectMapper mapper = new ObjectMapper();
 		List<I> results = new ArrayList<I>();
 		for (byte[] jsonBytes : matches.getResults()) {
@@ -437,7 +419,6 @@ public class HBaseDeviceEvent {
 				LOGGER.error("Unable to read JSON value into event object.", e);
 			}
 		}
-		// Collections.sort(results, Collections.reverseOrder());
 		return new SearchResults<I>(results, matches.getTotal());
 	}
 

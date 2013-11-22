@@ -20,8 +20,8 @@ import org.hbase.async.KeyValue;
 import org.hbase.async.PutRequest;
 
 import com.sitewhere.core.SiteWherePersistence;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.common.MetadataEntry;
@@ -163,7 +163,7 @@ public class HBaseDeviceAssignment {
 	public static DeviceAssignment updateDeviceAssignmentLocation(SiteWhereHBaseClient hbase, String token,
 			IDeviceLocationCreateRequest request) throws SiteWhereException {
 		DeviceAssignment updated = getDeviceAssignment(hbase, token);
-		DeviceLocation location = HBaseDeviceEvent.createDeviceLocationForRequest(updated, request);
+		DeviceLocation location = SiteWherePersistence.deviceLocationCreateLogic(updated, request);
 		updated.setLastLocation(location);
 		SiteWherePersistence.setUpdatedEntityMetadata(updated);
 
