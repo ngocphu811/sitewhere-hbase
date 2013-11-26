@@ -22,7 +22,6 @@ import org.hbase.async.Scanner;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.SiteWherePersistence;
-import com.sitewhere.hbase.DataUtils;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.common.MarshalUtils;
@@ -82,13 +81,14 @@ public class HBaseDeviceEvent {
 		byte[] qualifier = getQualifier(DeviceAssignmentRecordType.Measurement, time);
 
 		// Create measurements object and marshal to JSON.
-		DeviceMeasurements measurements = SiteWherePersistence.deviceMeasurementsCreateLogic(request,
-				assignment);
+		DeviceMeasurements measurements =
+				SiteWherePersistence.deviceMeasurementsCreateLogic(request, assignment);
 		byte[] json = MarshalUtils.marshalJson(measurements);
 
 		// Create device measurements record. Fire and forget so errors only hit callback.
-		PutRequest put = new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-				qualifier, json);
+		PutRequest put =
+				new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+						qualifier, json);
 		hbase.getClient().put(put).addErrback(new PutFailedCallback());
 
 		return measurements;
@@ -105,8 +105,8 @@ public class HBaseDeviceEvent {
 	 */
 	public static SearchResults<IDeviceMeasurements> listDeviceMeasurements(SiteWhereHBaseClient hbase,
 			String assnToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		Pager<byte[]> matches = getEventRowsForAssignment(hbase, assnToken,
-				DeviceAssignmentRecordType.Measurement, criteria);
+		Pager<byte[]> matches =
+				getEventRowsForAssignment(hbase, assnToken, DeviceAssignmentRecordType.Measurement, criteria);
 		return convertMatches(matches, DeviceMeasurements.class);
 	}
 
@@ -122,8 +122,8 @@ public class HBaseDeviceEvent {
 	public static SearchResults<IDeviceMeasurements> listDeviceMeasurementsForSite(
 			SiteWhereHBaseClient hbase, String siteToken, IDateRangeSearchCriteria criteria)
 			throws SiteWhereException {
-		Pager<byte[]> matches = getEventRowsForSite(hbase, siteToken, DeviceAssignmentRecordType.Measurement,
-				criteria);
+		Pager<byte[]> matches =
+				getEventRowsForSite(hbase, siteToken, DeviceAssignmentRecordType.Measurement, criteria);
 		return convertMatches(matches, DeviceMeasurements.class);
 	}
 
@@ -150,8 +150,9 @@ public class HBaseDeviceEvent {
 		byte[] json = MarshalUtils.marshalJson(location);
 
 		// Create device location record. Fire and forget so errors only hit callback.
-		PutRequest put = new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-				qualifier, json);
+		PutRequest put =
+				new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+						qualifier, json);
 		hbase.getClient().put(put).addErrback(new PutFailedCallback());
 
 		return location;
@@ -168,8 +169,8 @@ public class HBaseDeviceEvent {
 	 */
 	public static SearchResults<IDeviceLocation> listDeviceLocations(SiteWhereHBaseClient hbase,
 			String assnToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		Pager<byte[]> matches = getEventRowsForAssignment(hbase, assnToken,
-				DeviceAssignmentRecordType.Location, criteria);
+		Pager<byte[]> matches =
+				getEventRowsForAssignment(hbase, assnToken, DeviceAssignmentRecordType.Location, criteria);
 		return convertMatches(matches, DeviceLocation.class);
 	}
 
@@ -184,8 +185,8 @@ public class HBaseDeviceEvent {
 	 */
 	public static SearchResults<IDeviceLocation> listDeviceLocationsForSite(SiteWhereHBaseClient hbase,
 			String siteToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		Pager<byte[]> matches = getEventRowsForSite(hbase, siteToken, DeviceAssignmentRecordType.Location,
-				criteria);
+		Pager<byte[]> matches =
+				getEventRowsForSite(hbase, siteToken, DeviceAssignmentRecordType.Location, criteria);
 		return convertMatches(matches, DeviceLocation.class);
 	}
 
@@ -213,8 +214,9 @@ public class HBaseDeviceEvent {
 		byte[] json = MarshalUtils.marshalJson(alert);
 
 		// Create device alert record. Fire and forget so errors only hit callback.
-		PutRequest put = new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-				qualifier, json);
+		PutRequest put =
+				new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+						qualifier, json);
 		hbase.getClient().put(put).addErrback(new PutFailedCallback());
 
 		return alert;
@@ -231,8 +233,8 @@ public class HBaseDeviceEvent {
 	 */
 	public static SearchResults<IDeviceAlert> listDeviceAlerts(SiteWhereHBaseClient hbase, String assnToken,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		Pager<byte[]> matches = getEventRowsForAssignment(hbase, assnToken, DeviceAssignmentRecordType.Alert,
-				criteria);
+		Pager<byte[]> matches =
+				getEventRowsForAssignment(hbase, assnToken, DeviceAssignmentRecordType.Alert, criteria);
 		return convertMatches(matches, DeviceAlert.class);
 	}
 
@@ -247,8 +249,8 @@ public class HBaseDeviceEvent {
 	 */
 	public static SearchResults<IDeviceAlert> listDeviceAlertsForSite(SiteWhereHBaseClient hbase,
 			String siteToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
-		Pager<byte[]> matches = getEventRowsForSite(hbase, siteToken, DeviceAssignmentRecordType.Alert,
-				criteria);
+		Pager<byte[]> matches =
+				getEventRowsForSite(hbase, siteToken, DeviceAssignmentRecordType.Alert, criteria);
 		return convertMatches(matches, DeviceAlert.class);
 	}
 
@@ -479,14 +481,12 @@ public class HBaseDeviceEvent {
 		time = time / 1000;
 		long bucket = time - (time % BUCKET_INTERVAL);
 		byte[] bucketBytes = Bytes.fromLong(bucket);
-		System.out.println("Bucket value: " + DataUtils.bytesToHex(bucketBytes));
 		ByteBuffer buffer = ByteBuffer.allocate(assnKey.length + 4);
 		buffer.put(assnKey);
 		buffer.put((byte) ~bucketBytes[4]);
 		buffer.put((byte) ~bucketBytes[5]);
 		buffer.put((byte) ~bucketBytes[6]);
 		buffer.put((byte) ~bucketBytes[7]);
-		System.out.println("Inverted (last 4): " + DataUtils.bytesToHex(buffer.array()));
 		return buffer.array();
 	}
 
