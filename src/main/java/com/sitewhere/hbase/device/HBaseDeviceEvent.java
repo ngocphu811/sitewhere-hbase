@@ -11,6 +11,7 @@ package com.sitewhere.hbase.device;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -369,8 +370,8 @@ public class HBaseDeviceEvent {
 		scanner.setStartKey(startPrefix);
 		scanner.setStopKey(afterPrefix);
 
-		Pager<byte[]> pager = new Pager<byte[]>(criteria);
 		ArrayList<ArrayList<KeyValue>> current = new ArrayList<ArrayList<KeyValue>>();
+		List<DatedByteArray> matches = new ArrayList<DatedByteArray>();
 		try {
 			while ((current = scanner.nextRows().joinUninterruptibly()) != null) {
 				for (ArrayList<KeyValue> row : current) {
@@ -388,16 +389,51 @@ public class HBaseDeviceEvent {
 										&& (eventDate.after(criteria.getEndDate()))) {
 									continue;
 								}
-								pager.process(column.value());
+								matches.add(new DatedByteArray(eventDate, column.value()));
 							}
 						}
 					}
 				}
 			}
+			Collections.sort(matches, Collections.reverseOrder());
+			Pager<byte[]> pager = new Pager<byte[]>(criteria);
+			for (DatedByteArray match : matches) {
+				pager.process(match.getJson());
+			}
 			scanner.close().joinUninterruptibly();
 			return pager;
 		} catch (Exception e) {
 			throw new SiteWhereException("Error retrieving event rows.", e);
+		}
+	}
+
+	/**
+	 * Used for ordering events without having to unmarshal all of the byte arrays to do
+	 * it.
+	 * 
+	 * @author Derek
+	 */
+	private static class DatedByteArray implements Comparable<DatedByteArray> {
+
+		private Date date;
+
+		private byte[] json;
+
+		public DatedByteArray(Date date, byte[] json) {
+			this.date = date;
+			this.json = json;
+		}
+
+		protected Date getDate() {
+			return date;
+		}
+
+		protected byte[] getJson() {
+			return json;
+		}
+
+		public int compareTo(DatedByteArray other) {
+			return this.getDate().compareTo(other.getDate());
 		}
 	}
 
