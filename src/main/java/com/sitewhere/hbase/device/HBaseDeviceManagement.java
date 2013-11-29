@@ -19,11 +19,9 @@ import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.device.DeviceEventBatchResponse;
-import com.sitewhere.rest.service.search.SearchResults;
+import com.sitewhere.rest.model.search.SearchResults;
 import com.sitewhere.spi.SiteWhereException;
-import com.sitewhere.spi.common.IDateRangeSearchCriteria;
 import com.sitewhere.spi.common.IMetadataProvider;
-import com.sitewhere.spi.common.ISearchCriteria;
 import com.sitewhere.spi.device.DeviceAssignmentStatus;
 import com.sitewhere.spi.device.IDevice;
 import com.sitewhere.spi.device.IDeviceAlert;
@@ -42,6 +40,8 @@ import com.sitewhere.spi.device.request.IDeviceLocationCreateRequest;
 import com.sitewhere.spi.device.request.IDeviceMeasurementsCreateRequest;
 import com.sitewhere.spi.device.request.ISiteCreateRequest;
 import com.sitewhere.spi.device.request.IZoneCreateRequest;
+import com.sitewhere.spi.search.IDateRangeSearchCriteria;
+import com.sitewhere.spi.search.ISearchCriteria;
 
 /**
  * HBase implementation of SiteWhere device management.

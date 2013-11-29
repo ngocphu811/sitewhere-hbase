@@ -12,7 +12,7 @@ package com.sitewhere.hbase.common;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.sitewhere.spi.common.ISearchCriteria;
+import com.sitewhere.spi.search.ISearchCriteria;
 
 /**
  * Encapsulates paging functionality.
