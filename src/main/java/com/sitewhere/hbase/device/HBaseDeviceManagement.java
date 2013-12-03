@@ -256,12 +256,12 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 	 * (non-Javadoc)
 	 * 
 	 * @see
-	 * com.sitewhere.spi.device.IDeviceManagement#updateDeviceAssignmentLocation(java.
-	 * lang.String, com.sitewhere.spi.device.request.IDeviceLocationCreateRequest)
+	 * com.sitewhere.spi.device.IDeviceManagement#updateDeviceAssignmentState(java.lang
+	 * .String, com.sitewhere.spi.device.IDeviceEventBatch)
 	 */
-	public IDeviceAssignment updateDeviceAssignmentLocation(String token, IDeviceLocationCreateRequest request)
+	public IDeviceAssignment updateDeviceAssignmentState(String token, IDeviceEventBatch batch)
 			throws SiteWhereException {
-		return HBaseDeviceAssignment.updateDeviceAssignmentLocation(client, token, request);
+		return HBaseDeviceAssignment.updateDeviceAssignmentState(client, token, batch);
 	}
 
 	/*

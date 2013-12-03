@@ -27,14 +27,14 @@ import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.common.MetadataEntry;
 import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.DeviceAssignment;
-import com.sitewhere.rest.model.device.DeviceLocation;
+import com.sitewhere.rest.model.device.DeviceAssignmentState;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.SiteWhereSystemException;
 import com.sitewhere.spi.common.IMetadataProvider;
 import com.sitewhere.spi.device.DeviceAssignmentStatus;
 import com.sitewhere.spi.device.IDeviceAssignment;
+import com.sitewhere.spi.device.IDeviceEventBatch;
 import com.sitewhere.spi.device.request.IDeviceAssignmentCreateRequest;
-import com.sitewhere.spi.device.request.IDeviceLocationCreateRequest;
 import com.sitewhere.spi.error.ErrorCode;
 import com.sitewhere.spi.error.ErrorLevel;
 
@@ -51,8 +51,8 @@ public class HBaseDeviceAssignment {
 	/** Qualifier for assignment status */
 	public static final byte[] ASSIGNMENT_STATUS = Bytes.UTF8("status");
 
-	/** Qualifier for last location */
-	public static final byte[] LAST_LOCATION = Bytes.UTF8("location");
+	/** Qualifier for assignment state */
+	public static final byte[] ASSIGNMENT_STATE = Bytes.UTF8("state");
 
 	/**
 	 * Create a new device assignment.
@@ -84,14 +84,15 @@ public class HBaseDeviceAssignment {
 		String uuid = IdManager.getInstance().getAssignmentKeys().createUniqueId(rowkey);
 
 		// Create device assignment for JSON.
-		DeviceAssignment newAssignment = SiteWherePersistence.deviceAssignmentCreateLogic(request,
-				request.getSiteToken(), uuid);
+		DeviceAssignment newAssignment =
+				SiteWherePersistence.deviceAssignmentCreateLogic(request, request.getSiteToken(), uuid);
 
 		byte[] json = MarshalUtils.marshalJson(newAssignment);
 		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ASSIGNMENT_STATUS };
 		byte[][] values = { json, DeviceAssignmentStatus.Active.name().getBytes() };
-		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-				qualifiers, values);
+		PutRequest put =
+				new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+						qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to create device assignment.");
 
 		// Set the back reference from the device that indicates it is currently assigned.
@@ -115,10 +116,11 @@ public class HBaseDeviceAssignment {
 			throw new SiteWhereSystemException(ErrorCode.InvalidDeviceAssignmentToken, ErrorLevel.ERROR);
 		}
 
-		GetRequest request = new GetRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey).family(
-				ISiteWhereHBase.FAMILY_ID).qualifier(ISiteWhereHBase.JSON_CONTENT);
-		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
-				"Unable to load device assignment by token.");
+		GetRequest request =
+				new GetRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey).family(ISiteWhereHBase.FAMILY_ID).qualifier(
+						ISiteWhereHBase.JSON_CONTENT);
+		ArrayList<KeyValue> results =
+				HBasePersistence.syncGet(hbase, request, "Unable to load device assignment by token.");
 		if (results.size() != 1) {
 			throw new SiteWhereException("Expected one JSON entry for device assignment and found: "
 					+ results.size());
@@ -145,36 +147,37 @@ public class HBaseDeviceAssignment {
 
 		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		byte[] json = MarshalUtils.marshalJson(updated);
-		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-				ISiteWhereHBase.JSON_CONTENT, json);
+		PutRequest put =
+				new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+						ISiteWhereHBase.JSON_CONTENT, json);
 		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment metadata.");
 		return updated;
 	}
 
 	/**
-	 * Update location associated with device assignment.
+	 * Update state associated with device assignment.
 	 * 
 	 * @param hbase
 	 * @param token
-	 * @param request
+	 * @param batch
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static DeviceAssignment updateDeviceAssignmentLocation(SiteWhereHBaseClient hbase, String token,
-			IDeviceLocationCreateRequest request) throws SiteWhereException {
+	public static DeviceAssignment updateDeviceAssignmentState(SiteWhereHBaseClient hbase, String token,
+			IDeviceEventBatch batch) throws SiteWhereException {
 		DeviceAssignment updated = getDeviceAssignment(hbase, token);
-		DeviceLocation location = SiteWherePersistence.deviceLocationCreateLogic(updated, request);
-		updated.setLastLocation(location);
-		SiteWherePersistence.setUpdatedEntityMetadata(updated);
+		DeviceAssignmentState state = SiteWherePersistence.assignmentStateUpdateLogic(updated, batch);
+		updated.setState(state);
 
 		byte[] rowkey = IdManager.getInstance().getAssignmentKeys().getValue(token);
 		byte[] json = MarshalUtils.marshalJson(updated);
-		byte[] locJson = MarshalUtils.marshalJson(location);
-		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, LAST_LOCATION };
-		byte[][] values = { json, locJson };
-		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-				qualifiers, values);
-		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment location.");
+		byte[] stateJson = MarshalUtils.marshalJson(state);
+		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ASSIGNMENT_STATE };
+		byte[][] values = { json, stateJson };
+		PutRequest put =
+				new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+						qualifiers, values);
+		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment state.");
 		return updated;
 	}
 
@@ -197,8 +200,9 @@ public class HBaseDeviceAssignment {
 		byte[] json = MarshalUtils.marshalJson(updated);
 		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ASSIGNMENT_STATUS };
 		byte[][] values = { json, status.name().getBytes() };
-		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-				qualifiers, values);
+		PutRequest put =
+				new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+						qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment status.");
 		return updated;
 	}
@@ -226,8 +230,9 @@ public class HBaseDeviceAssignment {
 		byte[] json = MarshalUtils.marshalJson(updated);
 		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ASSIGNMENT_STATUS };
 		byte[][] values = { json, DeviceAssignmentStatus.Released.name().getBytes() };
-		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-				qualifiers, values);
+		PutRequest put =
+				new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
+						qualifiers, values);
 		HBasePersistence.syncPut(hbase, put, "Unable to update device assignment status.");
 		return updated;
 	}
@@ -267,8 +272,9 @@ public class HBaseDeviceAssignment {
 			byte[] updated = MarshalUtils.marshalJson(existing);
 			byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ISiteWhereHBase.DELETED };
 			byte[][] values = { updated, marker };
-			PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, assnId,
-					ISiteWhereHBase.FAMILY_ID, qualifiers, values);
+			PutRequest put =
+					new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, assnId, ISiteWhereHBase.FAMILY_ID,
+							qualifiers, values);
 			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for device assignment.");
 		}
 		return existing;
