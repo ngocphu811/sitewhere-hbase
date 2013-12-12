@@ -21,7 +21,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.ISiteWhereHBase;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
@@ -53,7 +53,7 @@ public class HBaseZone {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IZone createZone(SiteWhereHBaseClient hbase, ISite site, IZoneCreateRequest request)
+	public static IZone createZone(ISiteWhereHBaseClient hbase, ISite site, IZoneCreateRequest request)
 			throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(site.getToken());
 		if (siteId == null) {
@@ -73,11 +73,11 @@ public class HBaseZone {
 
 		HTableInterface sites = null;
 		try {
-			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 			Put put = new Put(rowkey);
 			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
 			sites.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to create zone.", e);
 		} finally {
 			HBaseUtils.closeCleanly(sites);
@@ -95,7 +95,7 @@ public class HBaseZone {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Zone updateZone(SiteWhereHBaseClient hbase, String token, IZoneCreateRequest request)
+	public static Zone updateZone(ISiteWhereHBaseClient hbase, String token, IZoneCreateRequest request)
 			throws SiteWhereException {
 		Zone updated = getZone(hbase, token);
 
@@ -107,11 +107,11 @@ public class HBaseZone {
 
 		HTableInterface sites = null;
 		try {
-			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 			Put put = new Put(zoneId);
 			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
 			sites.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to update zone.", e);
 		} finally {
 			HBaseUtils.closeCleanly(sites);
@@ -127,7 +127,7 @@ public class HBaseZone {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Zone getZone(SiteWhereHBaseClient hbase, String token) throws SiteWhereException {
+	public static Zone getZone(ISiteWhereHBaseClient hbase, String token) throws SiteWhereException {
 		byte[] rowkey = IdManager.getInstance().getZoneKeys().getValue(token);
 		if (rowkey == null) {
 			return null;
@@ -135,7 +135,7 @@ public class HBaseZone {
 
 		HTableInterface sites = null;
 		try {
-			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 			Get get = new Get(rowkey);
 			get.addColumn(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT);
 			Result result = sites.get(get);
@@ -159,7 +159,7 @@ public class HBaseZone {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Zone deleteZone(SiteWhereHBaseClient hbase, String token, boolean force)
+	public static Zone deleteZone(ISiteWhereHBaseClient hbase, String token, boolean force)
 			throws SiteWhereException {
 		byte[] zoneId = IdManager.getInstance().getZoneKeys().getValue(token);
 		if (zoneId == null) {
@@ -172,9 +172,9 @@ public class HBaseZone {
 			HTableInterface sites = null;
 			try {
 				Delete delete = new Delete(zoneId);
-				sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+				sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 				sites.delete(delete);
-			} catch (Exception e) {
+			} catch (IOException e) {
 				throw new SiteWhereException("Unable to delete zone.", e);
 			} finally {
 				HBaseUtils.closeCleanly(sites);
@@ -185,12 +185,12 @@ public class HBaseZone {
 			byte[] updated = MarshalUtils.marshalJson(existing);
 			HTableInterface sites = null;
 			try {
-				sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+				sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 				Put put = new Put(zoneId);
 				put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, updated);
 				put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.DELETED, marker);
 				sites.put(put);
-			} catch (Exception e) {
+			} catch (IOException e) {
 				throw new SiteWhereException("Unable to set deleted flag for zone.", e);
 			} finally {
 				HBaseUtils.closeCleanly(sites);

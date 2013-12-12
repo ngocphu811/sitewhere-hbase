@@ -15,7 +15,7 @@ import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.log4j.Logger;
 
 import com.sitewhere.hbase.ISiteWhereHBase;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.device.DeviceEventBatchResponse;
@@ -54,7 +54,7 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 	private static final Logger LOGGER = Logger.getLogger(HBaseDeviceManagement.class);
 
 	/** Used to communicate with HBase */
-	private SiteWhereHBaseClient client;
+	private ISiteWhereHBaseClient client;
 
 	/*
 	 * (non-Javadoc)
@@ -553,11 +553,11 @@ public class HBaseDeviceManagement implements IDeviceManagement {
 		return HBaseZone.deleteZone(client, zoneToken, force);
 	}
 
-	public SiteWhereHBaseClient getClient() {
+	public ISiteWhereHBaseClient getClient() {
 		return client;
 	}
 
-	public void setClient(SiteWhereHBaseClient client) {
+	public void setClient(ISiteWhereHBaseClient client) {
 		this.client = client;
 	}
 }

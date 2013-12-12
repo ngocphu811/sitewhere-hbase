@@ -32,7 +32,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.ISiteWhereHBase;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.common.Pager;
@@ -79,7 +79,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static ISite createSite(SiteWhereHBaseClient hbase, ISiteCreateRequest request)
+	public static ISite createSite(ISiteWhereHBaseClient hbase, ISiteCreateRequest request)
 			throws SiteWhereException {
 		String uuid = IdManager.getInstance().getSiteKeys().createUniqueId();
 		Long value = IdManager.getInstance().getSiteKeys().getValue(uuid);
@@ -94,13 +94,13 @@ public class HBaseSite {
 
 		HTableInterface sites = null;
 		try {
-			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 			Put put = new Put(primary);
 			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
 			put.add(ISiteWhereHBase.FAMILY_ID, ZONE_COUNTER, maxLong);
 			put.add(ISiteWhereHBase.FAMILY_ID, ASSIGNMENT_COUNTER, maxLong);
 			sites.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to create site.", e);
 		} finally {
 			HBaseUtils.closeCleanly(sites);
@@ -116,7 +116,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Site getSiteByToken(SiteWhereHBaseClient hbase, String token) throws SiteWhereException {
+	public static Site getSiteByToken(ISiteWhereHBaseClient hbase, String token) throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(token);
 		if (siteId == null) {
 			return null;
@@ -124,7 +124,7 @@ public class HBaseSite {
 		byte[] primary = getPrimaryRowkey(siteId);
 		HTableInterface sites = null;
 		try {
-			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 			Get get = new Get(primary);
 			get.addColumn(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT);
 			Result result = sites.get(get);
@@ -148,7 +148,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Site updateSite(SiteWhereHBaseClient hbase, String token, ISiteCreateRequest request)
+	public static Site updateSite(ISiteWhereHBaseClient hbase, String token, ISiteCreateRequest request)
 			throws SiteWhereException {
 		Site updated = getSiteByToken(hbase, token);
 		if (updated == null) {
@@ -164,11 +164,11 @@ public class HBaseSite {
 
 		HTableInterface sites = null;
 		try {
-			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 			Put put = new Put(rowkey);
 			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
 			sites.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to update site.", e);
 		} finally {
 			HBaseUtils.closeCleanly(sites);
@@ -184,7 +184,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<ISite> listSites(SiteWhereHBaseClient hbase, ISearchCriteria criteria)
+	public static SearchResults<ISite> listSites(ISiteWhereHBaseClient hbase, ISearchCriteria criteria)
 			throws SiteWhereException {
 		RegexStringComparator comparator = new RegexStringComparator(REGEX_SITE);
 		Pager<byte[]> pager = getFilteredSiteRows(hbase, false, criteria, comparator, null, null);
@@ -204,7 +204,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceAssignment> listDeviceAssignmentsForSite(SiteWhereHBaseClient hbase,
+	public static SearchResults<IDeviceAssignment> listDeviceAssignmentsForSite(ISiteWhereHBaseClient hbase,
 			String siteToken, ISearchCriteria criteria) throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(siteToken);
 		if (siteId == null) {
@@ -230,7 +230,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IZone> listZonesForSite(SiteWhereHBaseClient hbase, String siteToken,
+	public static SearchResults<IZone> listZonesForSite(ISiteWhereHBaseClient hbase, String siteToken,
 			ISearchCriteria criteria) throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(siteToken);
 		if (siteId == null) {
@@ -256,13 +256,13 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Pager<byte[]> getFilteredSiteRows(SiteWhereHBaseClient hbase, boolean includeDeleted,
+	public static Pager<byte[]> getFilteredSiteRows(ISiteWhereHBaseClient hbase, boolean includeDeleted,
 			ISearchCriteria criteria, WritableByteArrayComparable comparator, byte[] startRow, byte[] stopRow)
 			throws SiteWhereException {
 		HTableInterface sites = null;
 		ResultScanner scanner = null;
 		try {
-			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 			RowFilter matcher = new RowFilter(CompareOp.EQUAL, comparator);
 			Scan scan = new Scan();
 			if (startRow != null) {
@@ -292,7 +292,7 @@ public class HBaseSite {
 				}
 			}
 			return pager;
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Error scanning site rows.", e);
 		} finally {
 			if (scanner != null) {
@@ -311,7 +311,7 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Site deleteSite(SiteWhereHBaseClient hbase, String token, boolean force)
+	public static Site deleteSite(ISiteWhereHBaseClient hbase, String token, boolean force)
 			throws SiteWhereException {
 		Site existing = getSiteByToken(hbase, token);
 		if (existing == null) {
@@ -326,9 +326,9 @@ public class HBaseSite {
 			HTableInterface sites = null;
 			try {
 				Delete delete = new Delete(rowkey);
-				sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+				sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 				sites.delete(delete);
-			} catch (Exception e) {
+			} catch (IOException e) {
 				throw new SiteWhereException("Unable to delete site.", e);
 			} finally {
 				HBaseUtils.closeCleanly(sites);
@@ -339,12 +339,12 @@ public class HBaseSite {
 			byte[] updated = MarshalUtils.marshalJson(existing);
 			HTableInterface sites = null;
 			try {
-				sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+				sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 				Put put = new Put(rowkey);
 				put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, updated);
 				put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.DELETED, marker);
 				sites.put(put);
-			} catch (Exception e) {
+			} catch (IOException e) {
 				throw new SiteWhereException("Unable to set deleted flag for site.", e);
 			} finally {
 				HBaseUtils.closeCleanly(sites);
@@ -361,16 +361,16 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Long allocateNextZoneId(SiteWhereHBaseClient hbase, Long siteId) throws SiteWhereException {
+	public static Long allocateNextZoneId(ISiteWhereHBaseClient hbase, Long siteId) throws SiteWhereException {
 		byte[] primary = getPrimaryRowkey(siteId);
 		HTableInterface sites = null;
 		try {
-			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 			Increment increment = new Increment(primary);
 			increment.addColumn(ISiteWhereHBase.FAMILY_ID, ZONE_COUNTER, -1);
 			Result result = sites.increment(increment);
 			return Bytes.toLong(result.value());
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to allocate next zone id.", e);
 		} finally {
 			HBaseUtils.closeCleanly(sites);
@@ -386,17 +386,17 @@ public class HBaseSite {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Long allocateNextAssignmentId(SiteWhereHBaseClient hbase, Long siteId)
+	public static Long allocateNextAssignmentId(ISiteWhereHBaseClient hbase, Long siteId)
 			throws SiteWhereException {
 		byte[] primary = getPrimaryRowkey(siteId);
 		HTableInterface sites = null;
 		try {
-			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			sites = hbase.getTableInterface(ISiteWhereHBase.SITES_TABLE_NAME);
 			Increment increment = new Increment(primary);
 			increment.addColumn(ISiteWhereHBase.FAMILY_ID, ASSIGNMENT_COUNTER, -1);
 			Result result = sites.increment(increment);
 			return Bytes.toLong(result.value());
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to allocate next assignment id.", e);
 		} finally {
 			HBaseUtils.closeCleanly(sites);

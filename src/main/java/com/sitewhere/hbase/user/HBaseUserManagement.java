@@ -15,7 +15,7 @@ import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.log4j.Logger;
 
 import com.sitewhere.hbase.ISiteWhereHBase;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.spi.SiteWhereException;
@@ -38,7 +38,7 @@ public class HBaseUserManagement implements IUserManagement {
 	private static final Logger LOGGER = Logger.getLogger(HBaseUserManagement.class);
 
 	/** Used to communicate with HBase */
-	private SiteWhereHBaseClient client;
+	private ISiteWhereHBaseClient client;
 
 	/*
 	 * (non-Javadoc)
@@ -238,11 +238,11 @@ public class HBaseUserManagement implements IUserManagement {
 		throw new SiteWhereException("Not implemented.");
 	}
 
-	public SiteWhereHBaseClient getClient() {
+	public ISiteWhereHBaseClient getClient() {
 		return client;
 	}
 
-	public void setClient(SiteWhereHBaseClient client) {
+	public void setClient(ISiteWhereHBaseClient client) {
 		this.client = client;
 	}
 }

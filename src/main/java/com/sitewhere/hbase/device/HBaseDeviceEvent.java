@@ -29,7 +29,7 @@ import org.apache.log4j.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.ISiteWhereHBase;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.common.Pager;
@@ -76,7 +76,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDeviceMeasurements createDeviceMeasurements(SiteWhereHBaseClient hbase,
+	public static IDeviceMeasurements createDeviceMeasurements(ISiteWhereHBaseClient hbase,
 			IDeviceAssignment assignment, IDeviceMeasurementsCreateRequest request) throws SiteWhereException {
 		long time = getEventTime(request);
 		byte[] assnKey = IdManager.getInstance().getAssignmentKeys().getValue(assignment.getToken());
@@ -93,11 +93,11 @@ public class HBaseDeviceEvent {
 
 		HTableInterface events = null;
 		try {
-			events = hbase.getConnection().getTable(ISiteWhereHBase.EVENTS_TABLE_NAME);
+			events = hbase.getTableInterface(ISiteWhereHBase.EVENTS_TABLE_NAME);
 			Put put = new Put(rowkey);
 			put.add(ISiteWhereHBase.FAMILY_ID, qualifier, json);
 			events.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to create measurements.", e);
 		} finally {
 			HBaseUtils.closeCleanly(events);
@@ -115,7 +115,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceMeasurements> listDeviceMeasurements(SiteWhereHBaseClient hbase,
+	public static SearchResults<IDeviceMeasurements> listDeviceMeasurements(ISiteWhereHBaseClient hbase,
 			String assnToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		Pager<byte[]> matches =
 				getEventRowsForAssignment(hbase, assnToken, DeviceAssignmentRecordType.Measurement, criteria);
@@ -132,7 +132,7 @@ public class HBaseDeviceEvent {
 	 * @throws SiteWhereException
 	 */
 	public static SearchResults<IDeviceMeasurements> listDeviceMeasurementsForSite(
-			SiteWhereHBaseClient hbase, String siteToken, IDateRangeSearchCriteria criteria)
+			ISiteWhereHBaseClient hbase, String siteToken, IDateRangeSearchCriteria criteria)
 			throws SiteWhereException {
 		Pager<byte[]> matches =
 				getEventRowsForSite(hbase, siteToken, DeviceAssignmentRecordType.Measurement, criteria);
@@ -148,7 +148,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDeviceLocation createDeviceLocation(SiteWhereHBaseClient hbase,
+	public static IDeviceLocation createDeviceLocation(ISiteWhereHBaseClient hbase,
 			IDeviceAssignment assignment, IDeviceLocationCreateRequest request) throws SiteWhereException {
 		long time = getEventTime(request);
 		byte[] assnKey = IdManager.getInstance().getAssignmentKeys().getValue(assignment.getToken());
@@ -163,11 +163,11 @@ public class HBaseDeviceEvent {
 
 		HTableInterface events = null;
 		try {
-			events = hbase.getConnection().getTable(ISiteWhereHBase.EVENTS_TABLE_NAME);
+			events = hbase.getTableInterface(ISiteWhereHBase.EVENTS_TABLE_NAME);
 			Put put = new Put(rowkey);
 			put.add(ISiteWhereHBase.FAMILY_ID, qualifier, json);
 			events.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to create location.", e);
 		} finally {
 			HBaseUtils.closeCleanly(events);
@@ -185,7 +185,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceLocation> listDeviceLocations(SiteWhereHBaseClient hbase,
+	public static SearchResults<IDeviceLocation> listDeviceLocations(ISiteWhereHBaseClient hbase,
 			String assnToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		Pager<byte[]> matches =
 				getEventRowsForAssignment(hbase, assnToken, DeviceAssignmentRecordType.Location, criteria);
@@ -201,7 +201,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceLocation> listDeviceLocationsForSite(SiteWhereHBaseClient hbase,
+	public static SearchResults<IDeviceLocation> listDeviceLocationsForSite(ISiteWhereHBaseClient hbase,
 			String siteToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		Pager<byte[]> matches =
 				getEventRowsForSite(hbase, siteToken, DeviceAssignmentRecordType.Location, criteria);
@@ -217,7 +217,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDeviceAlert createDeviceAlert(SiteWhereHBaseClient hbase, IDeviceAssignment assignment,
+	public static IDeviceAlert createDeviceAlert(ISiteWhereHBaseClient hbase, IDeviceAssignment assignment,
 			IDeviceAlertCreateRequest request) throws SiteWhereException {
 		long time = getEventTime(request);
 		byte[] assnKey = IdManager.getInstance().getAssignmentKeys().getValue(assignment.getToken());
@@ -233,11 +233,11 @@ public class HBaseDeviceEvent {
 
 		HTableInterface events = null;
 		try {
-			events = hbase.getConnection().getTable(ISiteWhereHBase.EVENTS_TABLE_NAME);
+			events = hbase.getTableInterface(ISiteWhereHBase.EVENTS_TABLE_NAME);
 			Put put = new Put(rowkey);
 			put.add(ISiteWhereHBase.FAMILY_ID, qualifier, json);
 			events.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to create alert.", e);
 		} finally {
 			HBaseUtils.closeCleanly(events);
@@ -255,7 +255,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceAlert> listDeviceAlerts(SiteWhereHBaseClient hbase, String assnToken,
+	public static SearchResults<IDeviceAlert> listDeviceAlerts(ISiteWhereHBaseClient hbase, String assnToken,
 			IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		Pager<byte[]> matches =
 				getEventRowsForAssignment(hbase, assnToken, DeviceAssignmentRecordType.Alert, criteria);
@@ -271,7 +271,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceAlert> listDeviceAlertsForSite(SiteWhereHBaseClient hbase,
+	public static SearchResults<IDeviceAlert> listDeviceAlertsForSite(ISiteWhereHBaseClient hbase,
 			String siteToken, IDateRangeSearchCriteria criteria) throws SiteWhereException {
 		Pager<byte[]> matches =
 				getEventRowsForSite(hbase, siteToken, DeviceAssignmentRecordType.Alert, criteria);
@@ -289,7 +289,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	protected static Pager<byte[]> getEventRowsForAssignment(SiteWhereHBaseClient hbase, String assnToken,
+	protected static Pager<byte[]> getEventRowsForAssignment(ISiteWhereHBaseClient hbase, String assnToken,
 			DeviceAssignmentRecordType eventType, IDateRangeSearchCriteria criteria)
 			throws SiteWhereException {
 		byte[] assnKey = IdManager.getInstance().getAssignmentKeys().getValue(assnToken);
@@ -313,7 +313,7 @@ public class HBaseDeviceEvent {
 		HTableInterface events = null;
 		ResultScanner scanner = null;
 		try {
-			events = hbase.getConnection().getTable(ISiteWhereHBase.EVENTS_TABLE_NAME);
+			events = hbase.getTableInterface(ISiteWhereHBase.EVENTS_TABLE_NAME);
 			Scan scan = new Scan();
 			scan.setStartRow(startKey);
 			scan.setStopRow(endKey);
@@ -384,7 +384,7 @@ public class HBaseDeviceEvent {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	protected static Pager<byte[]> getEventRowsForSite(SiteWhereHBaseClient hbase, String siteToken,
+	protected static Pager<byte[]> getEventRowsForSite(ISiteWhereHBaseClient hbase, String siteToken,
 			DeviceAssignmentRecordType eventType, IDateRangeSearchCriteria criteria)
 			throws SiteWhereException {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(siteToken);
@@ -397,7 +397,7 @@ public class HBaseDeviceEvent {
 		HTableInterface events = null;
 		ResultScanner scanner = null;
 		try {
-			events = hbase.getConnection().getTable(ISiteWhereHBase.EVENTS_TABLE_NAME);
+			events = hbase.getTableInterface(ISiteWhereHBase.EVENTS_TABLE_NAME);
 			Scan scan = new Scan();
 			scan.setStartRow(startPrefix);
 			scan.setStopRow(afterPrefix);
@@ -432,8 +432,8 @@ public class HBaseDeviceEvent {
 				pager.process(match.getJson());
 			}
 			return pager;
-		} catch (Exception e) {
-			throw new SiteWhereException("Error scanning user rows.", e);
+		} catch (IOException e) {
+			throw new SiteWhereException("Error scanning event rows.", e);
 		} finally {
 			if (scanner != null) {
 				scanner.close();

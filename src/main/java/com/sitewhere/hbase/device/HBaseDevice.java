@@ -29,7 +29,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.ISiteWhereHBase;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.common.Pager;
@@ -71,7 +71,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDevice createDevice(SiteWhereHBaseClient hbase, IDeviceCreateRequest request)
+	public static IDevice createDevice(ISiteWhereHBaseClient hbase, IDeviceCreateRequest request)
 			throws SiteWhereException {
 		Long existing = IdManager.getInstance().getDeviceKeys().getValue(request.getHardwareId());
 		if (existing != null) {
@@ -102,7 +102,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDevice updateDevice(SiteWhereHBaseClient hbase, String hardwareId,
+	public static IDevice updateDevice(ISiteWhereHBaseClient hbase, String hardwareId,
 			IDeviceCreateRequest request) throws SiteWhereException {
 
 		// Can not update the hardware id on a device.
@@ -137,7 +137,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDevice> listDevices(SiteWhereHBaseClient hbase, boolean includeDeleted,
+	public static SearchResults<IDevice> listDevices(ISiteWhereHBaseClient hbase, boolean includeDeleted,
 			ISearchCriteria criteria) throws SiteWhereException {
 		Pager<byte[]> matches = getFilteredDevices(hbase, includeDeleted, false, criteria);
 		List<IDevice> response = new ArrayList<IDevice>();
@@ -155,7 +155,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDevice> listUnassignedDevices(SiteWhereHBaseClient hbase,
+	public static SearchResults<IDevice> listUnassignedDevices(ISiteWhereHBaseClient hbase,
 			ISearchCriteria criteria) throws SiteWhereException {
 		Pager<byte[]> matches = getFilteredDevices(hbase, false, true, criteria);
 		List<IDevice> response = new ArrayList<IDevice>();
@@ -175,12 +175,12 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	protected static Pager<byte[]> getFilteredDevices(SiteWhereHBaseClient hbase, boolean includeDeleted,
+	protected static Pager<byte[]> getFilteredDevices(ISiteWhereHBaseClient hbase, boolean includeDeleted,
 			boolean excludeAssigned, ISearchCriteria criteria) throws SiteWhereException {
 		HTableInterface devices = null;
 		ResultScanner scanner = null;
 		try {
-			devices = hbase.getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+			devices = hbase.getTableInterface(ISiteWhereHBase.DEVICES_TABLE_NAME);
 			Scan scan = new Scan();
 			scanner = devices.getScanner(scan);
 
@@ -205,7 +205,7 @@ public class HBaseDevice {
 				}
 			}
 			return pager;
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Error scanning device rows.", e);
 		} finally {
 			if (scanner != null) {
@@ -223,7 +223,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Device putDeviceJson(SiteWhereHBaseClient hbase, Device device) throws SiteWhereException {
+	public static Device putDeviceJson(ISiteWhereHBaseClient hbase, Device device) throws SiteWhereException {
 		Long value = IdManager.getInstance().getDeviceKeys().getValue(device.getHardwareId());
 		if (value == null) {
 			throw new SiteWhereSystemException(ErrorCode.InvalidHardwareId, ErrorLevel.ERROR);
@@ -233,11 +233,11 @@ public class HBaseDevice {
 
 		HTableInterface devices = null;
 		try {
-			devices = hbase.getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+			devices = hbase.getTableInterface(ISiteWhereHBase.DEVICES_TABLE_NAME);
 			Put put = new Put(primary);
 			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
 			devices.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to put device data.", e);
 		} finally {
 			HBaseUtils.closeCleanly(devices);
@@ -254,7 +254,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static Device getDeviceByHardwareId(SiteWhereHBaseClient hbase, String hardwareId)
+	public static Device getDeviceByHardwareId(ISiteWhereHBaseClient hbase, String hardwareId)
 			throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
@@ -266,7 +266,7 @@ public class HBaseDevice {
 
 		HTableInterface devices = null;
 		try {
-			devices = hbase.getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+			devices = hbase.getTableInterface(ISiteWhereHBase.DEVICES_TABLE_NAME);
 			Get get = new Get(primary);
 			get.addColumn(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT);
 			Result result = devices.get(get);
@@ -293,7 +293,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static IDevice deleteDevice(SiteWhereHBaseClient hbase, String hardwareId, boolean force)
+	public static IDevice deleteDevice(ISiteWhereHBaseClient hbase, String hardwareId, boolean force)
 			throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
@@ -307,9 +307,9 @@ public class HBaseDevice {
 			HTableInterface devices = null;
 			try {
 				Delete delete = new Delete(primary);
-				devices = hbase.getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+				devices = hbase.getTableInterface(ISiteWhereHBase.DEVICES_TABLE_NAME);
 				devices.delete(delete);
-			} catch (Exception e) {
+			} catch (IOException e) {
 				throw new SiteWhereException("Unable to delete device.", e);
 			} finally {
 				HBaseUtils.closeCleanly(devices);
@@ -321,12 +321,12 @@ public class HBaseDevice {
 
 			HTableInterface devices = null;
 			try {
-				devices = hbase.getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+				devices = hbase.getTableInterface(ISiteWhereHBase.DEVICES_TABLE_NAME);
 				Put put = new Put(primary);
 				put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, updated);
 				put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.DELETED, marker);
 				devices.put(put);
-			} catch (Exception e) {
+			} catch (IOException e) {
 				throw new SiteWhereException("Unable to set deleted flag for device.", e);
 			} finally {
 				HBaseUtils.closeCleanly(devices);
@@ -343,7 +343,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static String getCurrentAssignmentId(SiteWhereHBaseClient hbase, String hardwareId)
+	public static String getCurrentAssignmentId(ISiteWhereHBaseClient hbase, String hardwareId)
 			throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
@@ -353,7 +353,7 @@ public class HBaseDevice {
 
 		HTableInterface devices = null;
 		try {
-			devices = hbase.getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+			devices = hbase.getTableInterface(ISiteWhereHBase.DEVICES_TABLE_NAME);
 			Get get = new Get(primary);
 			get.addColumn(ISiteWhereHBase.FAMILY_ID, CURRENT_ASSIGNMENT);
 			Result result = devices.get(get);
@@ -380,7 +380,7 @@ public class HBaseDevice {
 	 * @param assignmentToken
 	 * @throws SiteWhereException
 	 */
-	public static void setDeviceAssignment(SiteWhereHBaseClient hbase, String hardwareId,
+	public static void setDeviceAssignment(ISiteWhereHBaseClient hbase, String hardwareId,
 			String assignmentToken) throws SiteWhereException {
 		String existing = getCurrentAssignmentId(hbase, hardwareId);
 		if (existing != null) {
@@ -401,13 +401,13 @@ public class HBaseDevice {
 
 		HTableInterface devices = null;
 		try {
-			devices = hbase.getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+			devices = hbase.getTableInterface(ISiteWhereHBase.DEVICES_TABLE_NAME);
 			Put put = new Put(primary);
 			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
 			put.add(ISiteWhereHBase.FAMILY_ID, CURRENT_ASSIGNMENT, assignmentToken.getBytes());
 			put.add(ISiteWhereHBase.FAMILY_ID, assnHistory, assignmentToken.getBytes());
 			devices.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to set device assignment.", e);
 		} finally {
 			HBaseUtils.closeCleanly(devices);
@@ -421,7 +421,7 @@ public class HBaseDevice {
 	 * @param hardwareId
 	 * @throws SiteWhereException
 	 */
-	public static void removeDeviceAssignment(SiteWhereHBaseClient hbase, String hardwareId)
+	public static void removeDeviceAssignment(ISiteWhereHBaseClient hbase, String hardwareId)
 			throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
@@ -435,14 +435,14 @@ public class HBaseDevice {
 
 		HTableInterface devices = null;
 		try {
-			devices = hbase.getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+			devices = hbase.getTableInterface(ISiteWhereHBase.DEVICES_TABLE_NAME);
 			Put put = new Put(primary);
 			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
 			devices.put(put);
 			Delete delete = new Delete(primary);
 			delete.deleteColumn(ISiteWhereHBase.FAMILY_ID, CURRENT_ASSIGNMENT);
 			devices.delete(delete);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to remove device assignment.", e);
 		} finally {
 			HBaseUtils.closeCleanly(devices);
@@ -457,7 +457,7 @@ public class HBaseDevice {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static SearchResults<IDeviceAssignment> getDeviceAssignmentHistory(SiteWhereHBaseClient hbase,
+	public static SearchResults<IDeviceAssignment> getDeviceAssignmentHistory(ISiteWhereHBaseClient hbase,
 			String hardwareId, ISearchCriteria criteria) throws SiteWhereException {
 		Long deviceId = IdManager.getInstance().getDeviceKeys().getValue(hardwareId);
 		if (deviceId == null) {
@@ -467,7 +467,7 @@ public class HBaseDevice {
 
 		HTableInterface devices = null;
 		try {
-			devices = hbase.getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+			devices = hbase.getTableInterface(ISiteWhereHBase.DEVICES_TABLE_NAME);
 			Get get = new Get(primary);
 			Result result = devices.get(get);
 

@@ -9,6 +9,7 @@
  */
 package com.sitewhere.hbase.uid;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
@@ -16,7 +17,7 @@ import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.sitewhere.hbase.ISiteWhereHBase;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.spi.SiteWhereException;
 
@@ -27,8 +28,7 @@ import com.sitewhere.spi.SiteWhereException;
  */
 public class UnqiueIdCounterMap extends UniqueIdMap<String, Long> {
 
-	public UnqiueIdCounterMap(SiteWhereHBaseClient hbase, UniqueIdType keyIndicator,
-			UniqueIdType valueIndicator) {
+	public UnqiueIdCounterMap(ISiteWhereHBaseClient hbase, UniqueIdType keyIndicator, UniqueIdType valueIndicator) {
 		super(hbase, keyIndicator, valueIndicator);
 	}
 
@@ -58,10 +58,10 @@ public class UnqiueIdCounterMap extends UniqueIdMap<String, Long> {
 		byte[] counterKey = counterRow.array();
 		HTableInterface uids = null;
 		try {
-			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			uids = hbase.getTableInterface(ISiteWhereHBase.UID_TABLE_NAME);
 			return uids.incrementColumnValue(counterKey, ISiteWhereHBase.FAMILY_ID, UniqueIdMap.VALUE_QUAL,
 					1L);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Error scanning user rows.", e);
 		} finally {
 			HBaseUtils.closeCleanly(uids);

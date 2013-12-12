@@ -11,7 +11,7 @@ package com.sitewhere.hbase.uid;
 
 import java.util.UUID;
 
-import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -21,7 +21,7 @@ import com.sitewhere.spi.SiteWhereException;
  */
 public class UuidRowKeyMap extends UniqueIdMap<String, byte[]> {
 
-	public UuidRowKeyMap(SiteWhereHBaseClient hbase, UniqueIdType keyIndicator, UniqueIdType valueIndicator) {
+	public UuidRowKeyMap(ISiteWhereHBaseClient hbase, UniqueIdType keyIndicator, UniqueIdType valueIndicator) {
 		super(hbase, keyIndicator, valueIndicator);
 	}
 

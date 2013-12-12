@@ -16,20 +16,21 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.InitializingBean;
 
 import com.sitewhere.spi.SiteWhereException;
 
 /**
- * Holds classes used to access HBase via client interfaces.
+ * Default SiteWhere HBase client implementation.
  * 
  * @author Derek
  */
-public class SiteWhereHBaseClient implements InitializingBean {
+public class DefaultHBaseClient implements InitializingBean, ISiteWhereHBaseClient {
 
 	/** Static logger instance */
-	private static final Logger LOGGER = Logger.getLogger(SiteWhereHBaseClient.class);
+	private static final Logger LOGGER = Logger.getLogger(DefaultHBaseClient.class);
 
 	/** Zookeeper quorum */
 	private String quorum;
@@ -77,12 +78,38 @@ public class SiteWhereHBaseClient implements InitializingBean {
 		}
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.hbase.ISiteWhereHBaseClient#getAdmin()
+	 */
+	@Override
 	public HBaseAdmin getAdmin() {
 		return admin;
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.hbase.ISiteWhereHBaseClient#getConfiguration()
+	 */
+	@Override
 	public Configuration getConfiguration() {
 		return configuration;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.sitewhere.hbase.ISiteWhereHBaseClient#getTableInterface(byte[])
+	 */
+	@Override
+	public HTableInterface getTableInterface(byte[] tableName) throws SiteWhereException {
+		try {
+			return getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+		} catch (IOException e) {
+			throw new SiteWhereException("IOException getting HBase table interface.", e);
+		}
 	}
 
 	public HConnection getConnection() {

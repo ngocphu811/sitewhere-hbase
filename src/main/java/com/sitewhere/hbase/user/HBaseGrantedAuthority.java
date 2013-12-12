@@ -27,7 +27,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.ISiteWhereHBase;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.rest.model.user.GrantedAuthority;
@@ -54,7 +54,7 @@ public class HBaseGrantedAuthority {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static GrantedAuthority createGrantedAuthority(SiteWhereHBaseClient hbase,
+	public static GrantedAuthority createGrantedAuthority(ISiteWhereHBaseClient hbase,
 			IGrantedAuthorityCreateRequest request) throws SiteWhereException {
 		GrantedAuthority existing = getGrantedAuthorityByName(hbase, request.getAuthority());
 		if (existing != null) {
@@ -69,11 +69,11 @@ public class HBaseGrantedAuthority {
 
 		HTableInterface users = null;
 		try {
-			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			users = hbase.getTableInterface(ISiteWhereHBase.USERS_TABLE_NAME);
 			Put put = new Put(primary);
 			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
 			users.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to create granted authority.", e);
 		} finally {
 			HBaseUtils.closeCleanly(users);
@@ -90,13 +90,13 @@ public class HBaseGrantedAuthority {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static GrantedAuthority getGrantedAuthorityByName(SiteWhereHBaseClient hbase, String name)
+	public static GrantedAuthority getGrantedAuthorityByName(ISiteWhereHBaseClient hbase, String name)
 			throws SiteWhereException {
 		byte[] rowkey = getGrantedAuthorityRowKey(name);
 
 		HTableInterface users = null;
 		try {
-			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			users = hbase.getTableInterface(ISiteWhereHBase.USERS_TABLE_NAME);
 			Get get = new Get(rowkey);
 			get.addColumn(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT);
 			Result result = users.get(get);
@@ -123,12 +123,12 @@ public class HBaseGrantedAuthority {
 	 * @return
 	 * @throws SiteWhereException
 	 */
-	public static List<IGrantedAuthority> listGrantedAuthorities(SiteWhereHBaseClient hbase,
+	public static List<IGrantedAuthority> listGrantedAuthorities(ISiteWhereHBaseClient hbase,
 			IGrantedAuthoritySearchCriteria criteria) throws SiteWhereException {
 		HTableInterface users = null;
 		ResultScanner scanner = null;
 		try {
-			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			users = hbase.getTableInterface(ISiteWhereHBase.USERS_TABLE_NAME);
 			Scan scan = new Scan();
 			scan.setStartRow(new byte[] { UserRecordType.GrantedAuthority.getType() });
 			scan.setStopRow(new byte[] { UserRecordType.End.getType() });
@@ -149,7 +149,7 @@ public class HBaseGrantedAuthority {
 				}
 			}
 			return matches;
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Error scanning user rows.", e);
 		} finally {
 			if (scanner != null) {

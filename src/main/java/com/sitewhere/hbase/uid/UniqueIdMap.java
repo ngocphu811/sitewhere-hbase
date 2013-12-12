@@ -26,7 +26,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.sitewhere.hbase.ISiteWhereHBase;
-import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.spi.SiteWhereException;
 
@@ -41,7 +41,7 @@ public abstract class UniqueIdMap<N, V> {
 	public static final byte[] VALUE_QUAL = Bytes.toBytes("value");
 
 	/** HBase client */
-	protected SiteWhereHBaseClient hbase;
+	protected ISiteWhereHBaseClient hbase;
 
 	/** Key type indicator */
 	protected UniqueIdType keyIndicator;
@@ -55,7 +55,7 @@ public abstract class UniqueIdMap<N, V> {
 	/** Maps of values to names */
 	private Map<V, N> valueToName = new HashMap<V, N>();
 
-	public UniqueIdMap(SiteWhereHBaseClient hbase, UniqueIdType keyIndicator, UniqueIdType valueIndicator) {
+	public UniqueIdMap(ISiteWhereHBaseClient hbase, UniqueIdType keyIndicator, UniqueIdType valueIndicator) {
 		this.hbase = hbase;
 		this.keyIndicator = keyIndicator;
 		this.valueIndicator = valueIndicator;
@@ -102,7 +102,7 @@ public abstract class UniqueIdMap<N, V> {
 
 		HTableInterface uids = null;
 		try {
-			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			uids = hbase.getTableInterface(ISiteWhereHBase.UID_TABLE_NAME);
 			Put put = new Put(nameBuffer.array());
 			put.add(ISiteWhereHBase.FAMILY_ID, VALUE_QUAL, valueBytes);
 			uids.put(put);
@@ -128,7 +128,7 @@ public abstract class UniqueIdMap<N, V> {
 
 		HTableInterface uids = null;
 		try {
-			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			uids = hbase.getTableInterface(ISiteWhereHBase.UID_TABLE_NAME);
 			Delete delete = new Delete(nameBuffer.array());
 			uids.delete(delete);
 		} catch (IOException e) {
@@ -155,11 +155,11 @@ public abstract class UniqueIdMap<N, V> {
 
 		HTableInterface uids = null;
 		try {
-			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			uids = hbase.getTableInterface(ISiteWhereHBase.UID_TABLE_NAME);
 			Put put = new Put(valueBuffer.array());
 			put.add(ISiteWhereHBase.FAMILY_ID, VALUE_QUAL, nameBytes);
 			uids.put(put);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Unable to store value mapping in UID table.", e);
 		} finally {
 			HBaseUtils.closeCleanly(uids);
@@ -181,7 +181,7 @@ public abstract class UniqueIdMap<N, V> {
 
 		HTableInterface uids = null;
 		try {
-			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			uids = hbase.getTableInterface(ISiteWhereHBase.UID_TABLE_NAME);
 			Delete delete = new Delete(valueBuffer.array());
 			uids.delete(delete);
 		} catch (IOException e) {
@@ -240,7 +240,7 @@ public abstract class UniqueIdMap<N, V> {
 		HTableInterface uids = null;
 		ResultScanner scanner = null;
 		try {
-			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			uids = hbase.getTableInterface(ISiteWhereHBase.UID_TABLE_NAME);
 			Scan scan = new Scan();
 			scan.setStartRow(startKey);
 			scan.setStopRow(stopKey);
@@ -251,7 +251,7 @@ public abstract class UniqueIdMap<N, V> {
 				results.add(result);
 			}
 			return results;
-		} catch (Exception e) {
+		} catch (IOException e) {
 			throw new SiteWhereException("Error scanning site rows.", e);
 		} finally {
 			if (scanner != null) {
@@ -295,7 +295,7 @@ public abstract class UniqueIdMap<N, V> {
 
 		HTableInterface uids = null;
 		try {
-			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			uids = hbase.getTableInterface(ISiteWhereHBase.UID_TABLE_NAME);
 			Get get = new Get(nameBuffer.array());
 			Result result = uids.get(get);
 			if (result.size() > 0) {
@@ -343,7 +343,7 @@ public abstract class UniqueIdMap<N, V> {
 
 		HTableInterface uids = null;
 		try {
-			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			uids = hbase.getTableInterface(ISiteWhereHBase.UID_TABLE_NAME);
 			Get get = new Get(valueBuffer.array());
 			Result result = uids.get(get);
 			if (result.size() > 0) {
@@ -370,7 +370,7 @@ public abstract class UniqueIdMap<N, V> {
 	public abstract byte[] convertValue(V value);
 
 	/** Get HBase connectivity accessor */
-	public SiteWhereHBaseClient getHbase() {
+	public ISiteWhereHBaseClient getHbase() {
 		return hbase;
 	}
 
