@@ -9,13 +9,11 @@
  */
 package com.sitewhere.hbase.vendor.intel;
 
-import java.io.IOException;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.InitializingBean;
 
@@ -27,6 +25,7 @@ import com.sitewhere.spi.SiteWhereException;
  * 
  * @author Derek
  */
+@SuppressWarnings("deprecation")
 public class IntelIDH251HBaseClient implements InitializingBean, ISiteWhereHBaseClient {
 
 	/** Static logger instance */
@@ -40,6 +39,9 @@ public class IntelIDH251HBaseClient implements InitializingBean, ISiteWhereHBase
 
 	/** Standard admin interface */
 	private HBaseAdmin admin;
+
+	/** Allow connection to be reused */
+	private HTablePool pool;
 
 	/*
 	 * (non-Javadoc)
@@ -78,6 +80,7 @@ public class IntelIDH251HBaseClient implements InitializingBean, ISiteWhereHBase
 			configuration.set("hregion.index.path", "hdfs:////regionsIndex");
 			configuration.set("zookeeper.session.timeout", "180000");
 			this.admin = new HBaseAdmin(configuration);
+			this.pool = new HTablePool(configuration, 5);
 		} catch (Exception e) {
 			throw new SiteWhereException(e);
 		}
@@ -110,11 +113,7 @@ public class IntelIDH251HBaseClient implements InitializingBean, ISiteWhereHBase
 	 */
 	@Override
 	public HTableInterface getTableInterface(byte[] tableName) throws SiteWhereException {
-		try {
-			return new HTable(getConfiguration(), tableName);
-		} catch (IOException e) {
-			throw new SiteWhereException("IOException accessing HTable.", e);
-		}
+		return pool.getTable(tableName);
 	}
 
 	public String getQuorum() {
