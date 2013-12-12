@@ -4,8 +4,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/sitewhere-client"/>
 	<classpathentry kind="var" path="M2_REPO/log4j/log4j/1.2.15/log4j-1.2.15.jar"/>
-	<classpathentry kind="var" path="M2_REPO/org/hbase/asynchbase/1.4.1/asynchbase-1.4.1.jar"/>
-	<classpathentry kind="var" path="M2_REPO/com/stumbleupon/async/1.3.1/async-1.3.1.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/apache/hbase/hbase/0.94.12/hbase-0.94.12.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/apache/hadoop/hadoop-core/1.0.4/hadoop-core-1.0.4.jar"/>
 	<classpathentry kind="var" path="M2_REPO/com/fasterxml/jackson/core/jackson-databind/2.1.1/jackson-databind-2.1.1.jar"/>

@@ -9,22 +9,28 @@
  */
 package com.sitewhere.hbase.device;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
-import org.hbase.async.Bytes;
-import org.hbase.async.KeyValue;
-import org.hbase.async.PutRequest;
-import org.hbase.async.Scanner;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.common.Pager;
 import com.sitewhere.hbase.uid.IdManager;
@@ -47,7 +53,6 @@ import com.sitewhere.spi.device.request.IDeviceMeasurementsCreateRequest;
 import com.sitewhere.spi.error.ErrorCode;
 import com.sitewhere.spi.error.ErrorLevel;
 import com.sitewhere.spi.search.IDateRangeSearchCriteria;
-import com.stumbleupon.async.Callback;
 
 /**
  * HBase specifics for dealing with SiteWhere device events.
@@ -86,11 +91,17 @@ public class HBaseDeviceEvent {
 				SiteWherePersistence.deviceMeasurementsCreateLogic(request, assignment);
 		byte[] json = MarshalUtils.marshalJson(measurements);
 
-		// Create device measurements record. Fire and forget so errors only hit callback.
-		PutRequest put =
-				new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-						qualifier, json);
-		hbase.getClient().put(put).addErrback(new PutFailedCallback());
+		HTableInterface events = null;
+		try {
+			events = hbase.getConnection().getTable(ISiteWhereHBase.EVENTS_TABLE_NAME);
+			Put put = new Put(rowkey);
+			put.add(ISiteWhereHBase.FAMILY_ID, qualifier, json);
+			events.put(put);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to create measurements.", e);
+		} finally {
+			HBaseUtils.closeCleanly(events);
+		}
 
 		return measurements;
 	}
@@ -150,11 +161,17 @@ public class HBaseDeviceEvent {
 		DeviceLocation location = SiteWherePersistence.deviceLocationCreateLogic(assignment, request);
 		byte[] json = MarshalUtils.marshalJson(location);
 
-		// Create device location record. Fire and forget so errors only hit callback.
-		PutRequest put =
-				new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-						qualifier, json);
-		hbase.getClient().put(put).addErrback(new PutFailedCallback());
+		HTableInterface events = null;
+		try {
+			events = hbase.getConnection().getTable(ISiteWhereHBase.EVENTS_TABLE_NAME);
+			Put put = new Put(rowkey);
+			put.add(ISiteWhereHBase.FAMILY_ID, qualifier, json);
+			events.put(put);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to create location.", e);
+		} finally {
+			HBaseUtils.closeCleanly(events);
+		}
 
 		return location;
 	}
@@ -214,11 +231,17 @@ public class HBaseDeviceEvent {
 		DeviceAlert alert = SiteWherePersistence.deviceAlertCreateLogic(assignment, request);
 		byte[] json = MarshalUtils.marshalJson(alert);
 
-		// Create device alert record. Fire and forget so errors only hit callback.
-		PutRequest put =
-				new PutRequest(ISiteWhereHBase.EVENTS_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-						qualifier, json);
-		hbase.getClient().put(put).addErrback(new PutFailedCallback());
+		HTableInterface events = null;
+		try {
+			events = hbase.getConnection().getTable(ISiteWhereHBase.EVENTS_TABLE_NAME);
+			Put put = new Put(rowkey);
+			put.add(ISiteWhereHBase.FAMILY_ID, qualifier, json);
+			events.put(put);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to create alert.", e);
+		} finally {
+			HBaseUtils.closeCleanly(events);
+		}
 
 		return alert;
 	}
@@ -273,8 +296,6 @@ public class HBaseDeviceEvent {
 		if (assnKey == null) {
 			throw new SiteWhereSystemException(ErrorCode.InvalidDeviceAssignmentToken, ErrorLevel.ERROR);
 		}
-		Scanner scanner = hbase.getClient().newScanner(ISiteWhereHBase.EVENTS_TABLE_NAME);
-		scanner.setFamily(ISiteWhereHBase.FAMILY_ID);
 
 		// Note: Because time values are inverted, start and end keys are reversed.
 		byte[] startKey = null, endKey = null;
@@ -288,35 +309,45 @@ public class HBaseDeviceEvent {
 		} else {
 			endKey = getAbsoluteEndKey(assnKey);
 		}
-		scanner.setStartKey(startKey);
-		scanner.setStopKey(endKey);
 
-		Pager<byte[]> pager = new Pager<byte[]>(criteria);
-		ArrayList<ArrayList<KeyValue>> current = new ArrayList<ArrayList<KeyValue>>();
+		HTableInterface events = null;
+		ResultScanner scanner = null;
 		try {
-			while ((current = scanner.nextRows().joinUninterruptibly()) != null) {
-				for (ArrayList<KeyValue> row : current) {
-					for (KeyValue column : row) {
-						byte[] qual = column.qualifier();
-						if ((qual.length > 3) && (qual[3] == eventType.getType())) {
-							Date eventDate = getDateForEventKeyValue(column);
-							if ((criteria.getStartDate() != null)
-									&& (eventDate.before(criteria.getStartDate()))) {
-								continue;
-							}
-							if ((criteria.getEndDate() != null) && (eventDate.after(criteria.getEndDate()))) {
-								continue;
-							}
-							pager.process(column.value());
+			events = hbase.getConnection().getTable(ISiteWhereHBase.EVENTS_TABLE_NAME);
+			Scan scan = new Scan();
+			scan.setStartRow(startKey);
+			scan.setStopRow(endKey);
+			scanner = events.getScanner(scan);
+
+			Pager<byte[]> pager = new Pager<byte[]>(criteria);
+			Iterator<Result> results = scanner.iterator();
+			while (results.hasNext()) {
+				Result current = results.next();
+				Map<byte[], byte[]> cells = current.getFamilyMap(ISiteWhereHBase.FAMILY_ID);
+				for (byte[] qual : cells.keySet()) {
+					byte[] value = cells.get(qual);
+					if ((qual.length > 3) && (qual[3] == eventType.getType())) {
+						Date eventDate = getDateForEventKeyValue(current.getRow(), qual);
+						if ((criteria.getStartDate() != null) && (eventDate.before(criteria.getStartDate()))) {
+							continue;
 						}
+						if ((criteria.getEndDate() != null) && (eventDate.after(criteria.getEndDate()))) {
+							continue;
+						}
+						pager.process(value);
 					}
 				}
 			}
-			scanner.close().joinUninterruptibly();
 			return pager;
-		} catch (Exception e) {
-			throw new SiteWhereException("Error retrieving event rows.", e);
+		} catch (IOException e) {
+			throw new SiteWhereException("Error scanning event rows.", e);
+		} finally {
+			if (scanner != null) {
+				scanner.close();
+			}
+			HBaseUtils.closeCleanly(events);
 		}
+
 	}
 
 	/**
@@ -325,20 +356,18 @@ public class HBaseDeviceEvent {
 	 * @param kv
 	 * @return
 	 */
-	protected static Date getDateForEventKeyValue(KeyValue kv) {
-		byte[] key = kv.key();
+	protected static Date getDateForEventKeyValue(byte[] key, byte[] qualifier) {
 		byte[] work = new byte[8];
 		work[4] = (byte) ~key[7];
 		work[5] = (byte) ~key[8];
 		work[6] = (byte) ~key[9];
 		work[7] = (byte) ~key[10];
-		long base = Bytes.getLong(work);
-		byte[] qual = kv.qualifier();
+		long base = Bytes.toLong(work);
 		work = new byte[8];
-		work[5] = (byte) ~qual[0];
-		work[6] = (byte) ~qual[1];
-		work[7] = (byte) ~qual[2];
-		long offset = Bytes.getLong(work);
+		work[5] = (byte) ~qualifier[0];
+		work[6] = (byte) ~qualifier[1];
+		work[7] = (byte) ~qualifier[2];
+		long offset = Bytes.toLong(work);
 		return new Date((base + offset) * 1000);
 	}
 
@@ -365,32 +394,34 @@ public class HBaseDeviceEvent {
 		byte[] startPrefix = HBaseSite.getAssignmentRowKey(siteId);
 		byte[] afterPrefix = HBaseSite.getAfterAssignmentRowKey(siteId);
 
-		Scanner scanner = hbase.getClient().newScanner(ISiteWhereHBase.EVENTS_TABLE_NAME);
-		scanner.setFamily(ISiteWhereHBase.FAMILY_ID);
-		scanner.setStartKey(startPrefix);
-		scanner.setStopKey(afterPrefix);
-
-		ArrayList<ArrayList<KeyValue>> current = new ArrayList<ArrayList<KeyValue>>();
-		List<DatedByteArray> matches = new ArrayList<DatedByteArray>();
+		HTableInterface events = null;
+		ResultScanner scanner = null;
 		try {
-			while ((current = scanner.nextRows().joinUninterruptibly()) != null) {
-				for (ArrayList<KeyValue> row : current) {
-					for (KeyValue column : row) {
-						byte[] key = column.key();
-						if (key.length > 7) {
-							byte[] qual = column.qualifier();
-							if ((qual.length > 3) && (qual[3] == eventType.getType())) {
-								Date eventDate = getDateForEventKeyValue(column);
-								if ((criteria.getStartDate() != null)
-										&& (eventDate.before(criteria.getStartDate()))) {
-									continue;
-								}
-								if ((criteria.getEndDate() != null)
-										&& (eventDate.after(criteria.getEndDate()))) {
-									continue;
-								}
-								matches.add(new DatedByteArray(eventDate, column.value()));
+			events = hbase.getConnection().getTable(ISiteWhereHBase.EVENTS_TABLE_NAME);
+			Scan scan = new Scan();
+			scan.setStartRow(startPrefix);
+			scan.setStopRow(afterPrefix);
+			scanner = events.getScanner(scan);
+
+			List<DatedByteArray> matches = new ArrayList<DatedByteArray>();
+			Iterator<Result> results = scanner.iterator();
+			while (results.hasNext()) {
+				Result current = results.next();
+				byte[] key = current.getRow();
+				if (key.length > 7) {
+					Map<byte[], byte[]> cells = current.getFamilyMap(ISiteWhereHBase.FAMILY_ID);
+					for (byte[] qual : cells.keySet()) {
+						byte[] value = cells.get(qual);
+						if ((qual.length > 3) && (qual[3] == eventType.getType())) {
+							Date eventDate = getDateForEventKeyValue(key, qual);
+							if ((criteria.getStartDate() != null)
+									&& (eventDate.before(criteria.getStartDate()))) {
+								continue;
 							}
+							if ((criteria.getEndDate() != null) && (eventDate.after(criteria.getEndDate()))) {
+								continue;
+							}
+							matches.add(new DatedByteArray(eventDate, value));
 						}
 					}
 				}
@@ -400,10 +431,14 @@ public class HBaseDeviceEvent {
 			for (DatedByteArray match : matches) {
 				pager.process(match.getJson());
 			}
-			scanner.close().joinUninterruptibly();
 			return pager;
 		} catch (Exception e) {
-			throw new SiteWhereException("Error retrieving event rows.", e);
+			throw new SiteWhereException("Error scanning user rows.", e);
+		} finally {
+			if (scanner != null) {
+				scanner.close();
+			}
+			HBaseUtils.closeCleanly(events);
 		}
 	}
 
@@ -516,7 +551,7 @@ public class HBaseDeviceEvent {
 	public static byte[] getRowKey(byte[] assnKey, long time) throws SiteWhereException {
 		time = time / 1000;
 		long bucket = time - (time % BUCKET_INTERVAL);
-		byte[] bucketBytes = Bytes.fromLong(bucket);
+		byte[] bucketBytes = Bytes.toBytes(bucket);
 		ByteBuffer buffer = ByteBuffer.allocate(assnKey.length + 4);
 		buffer.put(assnKey);
 		buffer.put((byte) ~bucketBytes[4]);
@@ -536,23 +571,12 @@ public class HBaseDeviceEvent {
 	public static byte[] getQualifier(DeviceAssignmentRecordType eventType, long time) {
 		time = time / 1000;
 		long offset = time % BUCKET_INTERVAL;
-		byte[] offsetBytes = Bytes.fromLong(offset);
+		byte[] offsetBytes = Bytes.toBytes(offset);
 		ByteBuffer buffer = ByteBuffer.allocate(4);
 		buffer.put((byte) ~offsetBytes[5]);
 		buffer.put((byte) ~offsetBytes[6]);
 		buffer.put((byte) ~offsetBytes[7]);
 		buffer.put(eventType.getType());
 		return buffer.array();
-	}
-
-	/**
-	 * Since events are sent to the backend in a fire-and-forget manner, this class is
-	 * used to handle "out of band" errors in a consistent way.
-	 */
-	static class PutFailedCallback implements Callback<Object, Exception> {
-		public Object call(final Exception e) {
-			LOGGER.error("Unable to write event to HBase.", e);
-			return e;
-		}
 	}
 }

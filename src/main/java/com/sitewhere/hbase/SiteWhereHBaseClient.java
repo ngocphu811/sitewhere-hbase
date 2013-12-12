@@ -14,8 +14,9 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.log4j.Logger;
-import org.hbase.async.HBaseClient;
 import org.springframework.beans.factory.InitializingBean;
 
 import com.sitewhere.spi.SiteWhereException;
@@ -33,8 +34,11 @@ public class SiteWhereHBaseClient implements InitializingBean {
 	/** Zookeeper quorum */
 	private String quorum;
 
-	/** Singleton HBase client instance */
-	private HBaseClient client;
+	/** HBase configuration */
+	private Configuration configuration;
+
+	/** HBase connection */
+	private HConnection connection;
 
 	/** Standard admin interface */
 	private HBaseAdmin admin;
@@ -45,12 +49,11 @@ public class SiteWhereHBaseClient implements InitializingBean {
 	 * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet()
 	 */
 	public void afterPropertiesSet() throws Exception {
-		this.client = new HBaseClient(quorum);
-		getClient().setFlushInterval((short) 250);
 		try {
-			Configuration config = HBaseConfiguration.create();
-			config.set("hbase.zookeeper.quorum", quorum);
-			this.admin = new HBaseAdmin(config);
+			configuration = HBaseConfiguration.create();
+			configuration.set("hbase.zookeeper.quorum", quorum);
+			this.admin = new HBaseAdmin(configuration);
+			this.connection = HConnectionManager.createConnection(configuration);
 		} catch (Exception e) {
 			throw new SiteWhereException(e);
 		}
@@ -60,28 +63,30 @@ public class SiteWhereHBaseClient implements InitializingBean {
 	 * Stop all connectivity. TODO: Where does this eventually get called?
 	 */
 	public void stop() {
-		if (getClient() != null) {
-			try {
-				getClient().shutdown().joinUninterruptibly();
-			} catch (Exception e) {
-				LOGGER.error("Async HBase client did not shut down cleanly.", e);
-			}
-		}
 		if (getAdmin() != null) {
 			try {
 				getAdmin().shutdown();
 			} catch (IOException e) {
 				LOGGER.error("HBaseAdmin did not shut down cleanly.", e);
 			}
+			try {
+				getConnection().close();
+			} catch (IOException e) {
+				LOGGER.error("HConnection did not close cleanly.", e);
+			}
 		}
-	}
-
-	public HBaseClient getClient() {
-		return client;
 	}
 
 	public HBaseAdmin getAdmin() {
 		return admin;
+	}
+
+	public Configuration getConfiguration() {
+		return configuration;
+	}
+
+	public HConnection getConnection() {
+		return connection;
 	}
 
 	public String getQuorum() {

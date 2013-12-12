@@ -9,7 +9,7 @@
  */
 package com.sitewhere.hbase;
 
-import org.hbase.async.Bytes;
+import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * Constants associated with the SiteWhere column family.
@@ -23,34 +23,34 @@ public interface ISiteWhereHBase {
 	 ***************/
 
 	/** Sites table name */
-	public static final byte[] UID_TABLE_NAME = Bytes.UTF8("sw-uids");
+	public static final byte[] UID_TABLE_NAME = Bytes.toBytes("sw-uids");
 
 	/** Sites table name */
-	public static final byte[] SITES_TABLE_NAME = Bytes.UTF8("sw-sites");
+	public static final byte[] SITES_TABLE_NAME = Bytes.toBytes("sw-sites");
 
 	/** Events table name */
-	public static final byte[] EVENTS_TABLE_NAME = Bytes.UTF8("sw-events");
+	public static final byte[] EVENTS_TABLE_NAME = Bytes.toBytes("sw-events");
 
 	/** Devices table name */
-	public static final byte[] DEVICES_TABLE_NAME = Bytes.UTF8("sw-devices");
+	public static final byte[] DEVICES_TABLE_NAME = Bytes.toBytes("sw-devices");
 
 	/** Users table name */
-	public static final byte[] USERS_TABLE_NAME = Bytes.UTF8("sw-users");
+	public static final byte[] USERS_TABLE_NAME = Bytes.toBytes("sw-users");
 
 	/*******************
 	 * COLUMN FAMILIES *
 	 *******************/
 
 	/** SiteWhere family id */
-	public static final byte[] FAMILY_ID = Bytes.UTF8("s");
+	public static final byte[] FAMILY_ID = Bytes.toBytes("s");
 
 	/*********************
 	 * COMMON QUALIFIERS *
 	 *********************/
 
 	/** Column qualifier for site JSON content */
-	public static final byte[] JSON_CONTENT = Bytes.UTF8("json");
+	public static final byte[] JSON_CONTENT = Bytes.toBytes("json");
 
 	/** Column qualifier that indicates a deleted record */
-	public static final byte[] DELETED = Bytes.UTF8("deleted");
+	public static final byte[] DELETED = Bytes.toBytes("deleted");
 }

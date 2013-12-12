@@ -9,23 +9,25 @@
  */
 package com.sitewhere.hbase.uid;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.log4j.Logger;
-import org.hbase.async.Bytes;
-import org.hbase.async.DeleteRequest;
-import org.hbase.async.GetRequest;
-import org.hbase.async.KeyValue;
-import org.hbase.async.PutRequest;
-import org.hbase.async.Scanner;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.Bytes;
 
-import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
-import com.sitewhere.hbase.device.HBasePersistence;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -35,11 +37,8 @@ import com.sitewhere.spi.SiteWhereException;
  */
 public abstract class UniqueIdMap<N, V> {
 
-	/** Static logger instance */
-	private static Logger LOGGER = Logger.getLogger(UniqueIdMap.class);
-
 	/** Qualifier for columns containing values */
-	public static final byte[] VALUE_QUAL = Bytes.UTF8("value");
+	public static final byte[] VALUE_QUAL = Bytes.toBytes("value");
 
 	/** HBase client */
 	protected SiteWhereHBaseClient hbase;
@@ -100,9 +99,18 @@ public abstract class UniqueIdMap<N, V> {
 		nameBuffer.put(keyIndicator.getIndicator());
 		nameBuffer.put(nameBytes);
 		byte[] valueBytes = convertValue(value);
-		PutRequest namePut = new PutRequest(ISiteWhereHBase.UID_TABLE_NAME, nameBuffer.array(),
-				ISiteWhereHBase.FAMILY_ID, VALUE_QUAL, valueBytes);
-		HBasePersistence.syncPut(hbase, namePut, "Unable to store value mapping in UID table.");
+
+		HTableInterface uids = null;
+		try {
+			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			Put put = new Put(nameBuffer.array());
+			put.add(ISiteWhereHBase.FAMILY_ID, VALUE_QUAL, valueBytes);
+			uids.put(put);
+		} catch (IOException e) {
+			throw new SiteWhereException("Unable to store value mapping in UID table.", e);
+		} finally {
+			HBaseUtils.closeCleanly(uids);
+		}
 		nameToValue.put(name, value);
 	}
 
@@ -117,8 +125,17 @@ public abstract class UniqueIdMap<N, V> {
 		ByteBuffer nameBuffer = ByteBuffer.allocate(nameBytes.length + 1);
 		nameBuffer.put(keyIndicator.getIndicator());
 		nameBuffer.put(nameBytes);
-		DeleteRequest delete = new DeleteRequest(ISiteWhereHBase.UID_TABLE_NAME, nameBuffer.array());
-		HBasePersistence.syncDelete(hbase, delete, "Unable to delete UID forward mapping.");
+
+		HTableInterface uids = null;
+		try {
+			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			Delete delete = new Delete(nameBuffer.array());
+			uids.delete(delete);
+		} catch (IOException e) {
+			throw new SiteWhereException("Unable to delete UID forward mapping.", e);
+		} finally {
+			HBaseUtils.closeCleanly(uids);
+		}
 		nameToValue.remove(name);
 	}
 
@@ -135,9 +152,18 @@ public abstract class UniqueIdMap<N, V> {
 		valueBuffer.put(valueIndicator.getIndicator());
 		valueBuffer.put(valueBytes);
 		byte[] nameBytes = convertName(name);
-		PutRequest valuePut = new PutRequest(ISiteWhereHBase.UID_TABLE_NAME, valueBuffer.array(),
-				ISiteWhereHBase.FAMILY_ID, VALUE_QUAL, nameBytes);
-		HBasePersistence.syncPut(hbase, valuePut, "Unable to store value mapping in UID table.");
+
+		HTableInterface uids = null;
+		try {
+			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			Put put = new Put(valueBuffer.array());
+			put.add(ISiteWhereHBase.FAMILY_ID, VALUE_QUAL, nameBytes);
+			uids.put(put);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to store value mapping in UID table.", e);
+		} finally {
+			HBaseUtils.closeCleanly(uids);
+		}
 		valueToName.put(value, name);
 	}
 
@@ -152,8 +178,17 @@ public abstract class UniqueIdMap<N, V> {
 		ByteBuffer valueBuffer = ByteBuffer.allocate(valueBytes.length + 1);
 		valueBuffer.put(valueIndicator.getIndicator());
 		valueBuffer.put(valueBytes);
-		DeleteRequest delete = new DeleteRequest(ISiteWhereHBase.UID_TABLE_NAME, valueBuffer.array());
-		HBasePersistence.syncDelete(hbase, delete, "Unable to delete UID backward mapping.");
+
+		HTableInterface uids = null;
+		try {
+			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			Delete delete = new Delete(valueBuffer.array());
+			uids.delete(delete);
+		} catch (IOException e) {
+			throw new SiteWhereException("Unable to delete UID backward mapping.", e);
+		} finally {
+			HBaseUtils.closeCleanly(uids);
+		}
 		valueToName.remove(value);
 	}
 
@@ -164,18 +199,18 @@ public abstract class UniqueIdMap<N, V> {
 	 */
 	public void refresh() throws SiteWhereException {
 		try {
-			List<KeyValue> ntvList = getValuesForType(keyIndicator);
-			for (KeyValue ntv : ntvList) {
-				byte[] key = ntv.key();
+			List<Result> ntvList = getValuesForType(keyIndicator);
+			for (Result ntv : ntvList) {
+				byte[] key = ntv.getRow();
 				byte[] nameBytes = new byte[key.length - 1];
 				System.arraycopy(key, 1, nameBytes, 0, nameBytes.length);
 				N name = convertName(nameBytes);
 				V value = convertValue(ntv.value());
 				nameToValue.put(name, value);
 			}
-			List<KeyValue> vtnList = getValuesForType(valueIndicator);
-			for (KeyValue vtn : vtnList) {
-				byte[] key = vtn.key();
+			List<Result> vtnList = getValuesForType(valueIndicator);
+			for (Result vtn : vtnList) {
+				byte[] key = vtn.getRow();
 				byte[] valueBytes = new byte[key.length - 1];
 				System.arraycopy(key, 1, valueBytes, 0, valueBytes.length);
 				V value = convertValue(valueBytes);
@@ -188,31 +223,42 @@ public abstract class UniqueIdMap<N, V> {
 	}
 
 	/**
-	 * Get all {@link KeyValue} results for the given uid type.
+	 * Get all {@link Result} results for the given uid type.
 	 * 
 	 * @param start
 	 * @param end
 	 * @return
 	 * @throws Exception
 	 */
-	protected List<KeyValue> getValuesForType(UniqueIdType type) throws Exception {
-		Scanner keyScanner = hbase.getClient().newScanner(ISiteWhereHBase.UID_TABLE_NAME);
+	protected List<Result> getValuesForType(UniqueIdType type) throws Exception {
 		byte startByte = keyIndicator.getIndicator();
 		byte stopByte = keyIndicator.getIndicator();
 		stopByte++;
 		byte[] startKey = { startByte };
 		byte[] stopKey = { stopByte };
-		keyScanner.setStartKey(startKey);
-		keyScanner.setStopKey(stopKey);
-		List<KeyValue> results = new ArrayList<KeyValue>();
-		ArrayList<ArrayList<KeyValue>> currentBatch;
-		while ((currentBatch = keyScanner.nextRows().joinUninterruptibly()) != null) {
-			for (ArrayList<KeyValue> row : currentBatch) {
-				results.addAll(row);
+
+		HTableInterface uids = null;
+		ResultScanner scanner = null;
+		try {
+			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			Scan scan = new Scan();
+			scan.setStartRow(startKey);
+			scan.setStopRow(stopKey);
+			scanner = uids.getScanner(scan);
+
+			List<Result> results = new ArrayList<Result>();
+			for (Result result : scanner) {
+				results.add(result);
 			}
+			return results;
+		} catch (Exception e) {
+			throw new SiteWhereException("Error scanning site rows.", e);
+		} finally {
+			if (scanner != null) {
+				scanner.close();
+			}
+			HBaseUtils.closeCleanly(uids);
 		}
-		keyScanner.close();
-		return results;
 	}
 
 	/**
@@ -220,8 +266,9 @@ public abstract class UniqueIdMap<N, V> {
 	 * 
 	 * @param name
 	 * @return
+	 * @throws SiteWhereException
 	 */
-	public V getValue(N name) {
+	public V getValue(N name) throws SiteWhereException {
 		V result = nameToValue.get(name);
 		if (result == null) {
 			result = getValueFromTable(name);
@@ -238,23 +285,27 @@ public abstract class UniqueIdMap<N, V> {
 	 * 
 	 * @param name
 	 * @return
+	 * @throws SiteWhereException
 	 */
-	protected V getValueFromTable(N name) {
+	protected V getValueFromTable(N name) throws SiteWhereException {
 		byte[] nameBytes = convertName(name);
 		ByteBuffer nameBuffer = ByteBuffer.allocate(nameBytes.length + 1);
 		nameBuffer.put(keyIndicator.getIndicator());
 		nameBuffer.put(nameBytes);
-		GetRequest request = new GetRequest(ISiteWhereHBase.UID_TABLE_NAME, nameBuffer.array());
+
+		HTableInterface uids = null;
 		try {
-			ArrayList<KeyValue> matches = hbase.getClient().get(request).joinUninterruptibly();
-			if (matches.size() > 0) {
-				byte[] value = matches.get(0).value();
-				return convertValue(value);
+			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			Get get = new Get(nameBuffer.array());
+			Result result = uids.get(get);
+			if (result.size() > 0) {
+				return convertValue(result.value());
 			}
 			return null;
-		} catch (Exception e) {
-			LOGGER.error("Error locating name to value mapping.", e);
-			return null;
+		} catch (IOException e) {
+			throw new SiteWhereException("Error locating name to value mapping.", e);
+		} finally {
+			HBaseUtils.closeCleanly(uids);
 		}
 	}
 
@@ -263,8 +314,9 @@ public abstract class UniqueIdMap<N, V> {
 	 * 
 	 * @param value
 	 * @return
+	 * @throws SiteWhereException
 	 */
-	public N getName(V value) {
+	public N getName(V value) throws SiteWhereException {
 		N result = valueToName.get(value);
 		if (result == null) {
 			result = getNameFromTable(value);
@@ -279,25 +331,29 @@ public abstract class UniqueIdMap<N, V> {
 	/**
 	 * Get the current name for value from UID table.
 	 * 
-	 * @param name
+	 * @param value
 	 * @return
+	 * @throws SiteWhereException
 	 */
-	protected N getNameFromTable(V value) {
+	protected N getNameFromTable(V value) throws SiteWhereException {
 		byte[] valueBytes = convertValue(value);
 		ByteBuffer valueBuffer = ByteBuffer.allocate(valueBytes.length + 1);
 		valueBuffer.put(valueIndicator.getIndicator());
 		valueBuffer.put(valueBytes);
-		GetRequest request = new GetRequest(ISiteWhereHBase.UID_TABLE_NAME, valueBuffer.array());
+
+		HTableInterface uids = null;
 		try {
-			ArrayList<KeyValue> matches = hbase.getClient().get(request).joinUninterruptibly();
-			if (matches.size() > 0) {
-				byte[] name = matches.get(0).value();
-				return convertName(name);
+			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			Get get = new Get(valueBuffer.array());
+			Result result = uids.get(get);
+			if (result.size() > 0) {
+				return convertName(result.value());
 			}
 			return null;
-		} catch (Exception e) {
-			LOGGER.error("Error locating value to name mapping.", e);
-			return null;
+		} catch (IOException e) {
+			throw new SiteWhereException("Error locating value to name mapping.", e);
+		} finally {
+			HBaseUtils.closeCleanly(uids);
 		}
 	}
 

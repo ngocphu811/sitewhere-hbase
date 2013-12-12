@@ -9,26 +9,29 @@
  */
 package com.sitewhere.hbase.user;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.log4j.Logger;
-import org.hbase.async.Bytes;
-import org.hbase.async.DeleteRequest;
-import org.hbase.async.GetRequest;
-import org.hbase.async.KeyValue;
-import org.hbase.async.PutRequest;
-import org.hbase.async.Scanner;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.hbase.common.MarshalUtils;
-import com.sitewhere.hbase.device.HBasePersistence;
 import com.sitewhere.rest.model.user.GrantedAuthoritySearchCriteria;
 import com.sitewhere.rest.model.user.User;
 import com.sitewhere.spi.SiteWhereException;
@@ -46,9 +49,6 @@ import com.sitewhere.spi.user.request.IUserCreateRequest;
  * @author Derek
  */
 public class HBaseUser {
-
-	/** Static logger instance */
-	private static Logger LOGGER = Logger.getLogger(HBaseUser.class);
 
 	/**
 	 * Create a new device.
@@ -71,9 +71,17 @@ public class HBaseUser {
 		byte[] primary = getUserRowKey(request.getUsername());
 		byte[] json = MarshalUtils.marshalJson(user);
 
-		PutRequest put = new PutRequest(ISiteWhereHBase.USERS_TABLE_NAME, primary, ISiteWhereHBase.FAMILY_ID,
-				ISiteWhereHBase.JSON_CONTENT, json);
-		HBasePersistence.syncPut(hbase, put, "Unable to set JSON for user.");
+		HTableInterface users = null;
+		try {
+			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			Put put = new Put(primary);
+			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
+			users.put(put);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to set JSON for user.", e);
+		} finally {
+			HBaseUtils.closeCleanly(users);
+		}
 
 		return user;
 	}
@@ -98,9 +106,17 @@ public class HBaseUser {
 		byte[] primary = getUserRowKey(username);
 		byte[] json = MarshalUtils.marshalJson(updated);
 
-		PutRequest put = new PutRequest(ISiteWhereHBase.USERS_TABLE_NAME, primary, ISiteWhereHBase.FAMILY_ID,
-				ISiteWhereHBase.JSON_CONTENT, json);
-		HBasePersistence.syncPut(hbase, put, "Unable to set JSON for user.");
+		HTableInterface users = null;
+		try {
+			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			Put put = new Put(primary);
+			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
+			users.put(put);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to set JSON for user.", e);
+		} finally {
+			HBaseUtils.closeCleanly(users);
+		}
 		return updated;
 	}
 
@@ -122,21 +138,32 @@ public class HBaseUser {
 		existing.setDeleted(true);
 		byte[] primary = getUserRowKey(username);
 		if (force) {
-			DeleteRequest delete = new DeleteRequest(ISiteWhereHBase.USERS_TABLE_NAME, primary);
+			HTableInterface users = null;
 			try {
-				hbase.getClient().delete(delete).joinUninterruptibly();
+				users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+				Delete delete = new Delete(primary);
+				users.delete(delete);
 			} catch (Exception e) {
 				throw new SiteWhereException("Unable to delete user.", e);
+			} finally {
+				HBaseUtils.closeCleanly(users);
 			}
 		} else {
 			byte[] marker = { (byte) 0x01 };
 			SiteWherePersistence.setUpdatedEntityMetadata(existing);
 			byte[] updated = MarshalUtils.marshalJson(existing);
-			byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ISiteWhereHBase.DELETED };
-			byte[][] values = { updated, marker };
-			PutRequest put = new PutRequest(ISiteWhereHBase.USERS_TABLE_NAME, primary,
-					ISiteWhereHBase.FAMILY_ID, qualifiers, values);
-			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for user.");
+			HTableInterface users = null;
+			try {
+				users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+				Put put = new Put(primary);
+				put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, updated);
+				put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.DELETED, marker);
+				users.put(put);
+			} catch (Exception e) {
+				throw new SiteWhereException("Unable to set deleted flag for user.", e);
+			} finally {
+				HBaseUtils.closeCleanly(users);
+			}
 		}
 		return existing;
 	}
@@ -152,18 +179,25 @@ public class HBaseUser {
 	public static User getUserByUsername(SiteWhereHBaseClient hbase, String username)
 			throws SiteWhereException {
 		byte[] rowkey = getUserRowKey(username);
-		GetRequest request = new GetRequest(ISiteWhereHBase.USERS_TABLE_NAME, rowkey).family(
-				ISiteWhereHBase.FAMILY_ID).qualifier(ISiteWhereHBase.JSON_CONTENT);
-		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
-				"Unable to load user by username.");
-		if (results.size() == 0) {
-			return null;
+
+		HTableInterface users = null;
+		try {
+			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			Get get = new Get(rowkey);
+			get.addColumn(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT);
+			Result result = users.get(get);
+			if (result.size() == 0) {
+				return null;
+			}
+			if (result.size() > 1) {
+				throw new SiteWhereException("Expected one JSON entry for site and found: " + result.size());
+			}
+			return MarshalUtils.unmarshalJson(result.value(), User.class);
+		} catch (IOException e) {
+			throw new SiteWhereException("Unable to load user by username.", e);
+		} finally {
+			HBaseUtils.closeCleanly(users);
 		}
-		if (results.size() > 1) {
-			throw new SiteWhereException("Expected one JSON entry for user and found: " + results.size());
-		}
-		byte[] json = results.get(0).value();
-		return MarshalUtils.unmarshalJson(json, User.class);
 	}
 
 	/**
@@ -197,10 +231,17 @@ public class HBaseUser {
 		byte[] primary = getUserRowKey(username);
 		byte[] json = MarshalUtils.marshalJson(existing);
 
-		// Create primary device record.
-		PutRequest put = new PutRequest(ISiteWhereHBase.USERS_TABLE_NAME, primary, ISiteWhereHBase.FAMILY_ID,
-				ISiteWhereHBase.JSON_CONTENT, json);
-		HBasePersistence.syncPut(hbase, put, "Unable to set JSON for user.");
+		HTableInterface users = null;
+		try {
+			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			Put put = new Put(primary);
+			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
+			users.put(put);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to set deleted flag for user.", e);
+		} finally {
+			HBaseUtils.closeCleanly(users);
+		}
 		return existing;
 	}
 
@@ -214,40 +255,41 @@ public class HBaseUser {
 	 */
 	public static List<IUser> listUsers(SiteWhereHBaseClient hbase, IUserSearchCriteria criteria)
 			throws SiteWhereException {
-		Scanner scanner = hbase.getClient().newScanner(ISiteWhereHBase.USERS_TABLE_NAME);
-		scanner.setStartKey(new byte[] { UserRecordType.User.getType() });
-		scanner.setStopKey(new byte[] { UserRecordType.GrantedAuthority.getType() });
+
+		HTableInterface users = null;
+		ResultScanner scanner = null;
 		try {
+			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			Scan scan = new Scan();
+			scan.setStartRow(new byte[] { UserRecordType.User.getType() });
+			scan.setStopRow(new byte[] { UserRecordType.GrantedAuthority.getType() });
+			scanner = users.getScanner(scan);
+
 			ArrayList<IUser> matches = new ArrayList<IUser>();
-			ArrayList<ArrayList<KeyValue>> results;
-			while ((results = scanner.nextRows().joinUninterruptibly()) != null) {
-				for (ArrayList<KeyValue> row : results) {
-					boolean shouldAdd = true;
-					KeyValue jsonColumn = null;
-					for (KeyValue column : row) {
-						byte[] qualifier = column.qualifier();
-						if ((Bytes.equals(ISiteWhereHBase.DELETED, qualifier))
-								&& (!criteria.isIncludeDeleted())) {
-							shouldAdd = false;
-						}
-						if (Bytes.equals(ISiteWhereHBase.JSON_CONTENT, qualifier)) {
-							jsonColumn = column;
-						}
+			for (Result result : scanner) {
+				boolean shouldAdd = true;
+				Map<byte[], byte[]> row = result.getFamilyMap(ISiteWhereHBase.FAMILY_ID);
+				byte[] json = null;
+				for (byte[] qualifier : row.keySet()) {
+					if ((Bytes.equals(ISiteWhereHBase.DELETED, qualifier)) && (!criteria.isIncludeDeleted())) {
+						shouldAdd = false;
 					}
-					if ((shouldAdd) && (jsonColumn != null)) {
-						matches.add(MarshalUtils.unmarshalJson(jsonColumn.value(), User.class));
+					if (Bytes.equals(ISiteWhereHBase.JSON_CONTENT, qualifier)) {
+						json = row.get(qualifier);
 					}
+				}
+				if ((shouldAdd) && (json != null)) {
+					matches.add(MarshalUtils.unmarshalJson(json, User.class));
 				}
 			}
 			return matches;
 		} catch (Exception e) {
-			throw new SiteWhereException("Error scanning results for listing users.", e);
+			throw new SiteWhereException("Error scanning user rows.", e);
 		} finally {
-			try {
-				scanner.close().joinUninterruptibly();
-			} catch (Exception e) {
-				LOGGER.error("Error shutting down scanner for listing users.", e);
+			if (scanner != null) {
+				scanner.close();
 			}
+			HBaseUtils.closeCleanly(users);
 		}
 	}
 
@@ -263,8 +305,8 @@ public class HBaseUser {
 			throws SiteWhereException {
 		IUser user = getUserByUsername(hbase, username);
 		List<String> userAuths = user.getAuthorities();
-		List<IGrantedAuthority> all = HBaseGrantedAuthority.listGrantedAuthorities(hbase,
-				new GrantedAuthoritySearchCriteria());
+		List<IGrantedAuthority> all =
+				HBaseGrantedAuthority.listGrantedAuthorities(hbase, new GrantedAuthoritySearchCriteria());
 		List<IGrantedAuthority> matched = new ArrayList<IGrantedAuthority>();
 		for (IGrantedAuthority auth : all) {
 			if (userAuths.contains(auth.getAuthority())) {
@@ -281,7 +323,7 @@ public class HBaseUser {
 	 * @return
 	 */
 	public static byte[] getUserRowKey(String username) {
-		byte[] userBytes = Bytes.UTF8(username);
+		byte[] userBytes = Bytes.toBytes(username);
 		ByteBuffer buffer = ByteBuffer.allocate(1 + userBytes.length);
 		buffer.put(UserRecordType.User.getType());
 		buffer.put(userBytes);

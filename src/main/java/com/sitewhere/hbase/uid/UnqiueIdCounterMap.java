@@ -10,17 +10,14 @@
 package com.sitewhere.hbase.uid;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.UUID;
 
-import org.hbase.async.AtomicIncrementRequest;
-import org.hbase.async.Bytes;
-import org.hbase.async.GetRequest;
-import org.hbase.async.KeyValue;
-import org.hbase.async.PutRequest;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.util.Bytes;
 
-import com.sitewhere.hbase.SiteWhereHBaseClient;
 import com.sitewhere.hbase.ISiteWhereHBase;
+import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.spi.SiteWhereException;
 
 /**
@@ -30,7 +27,8 @@ import com.sitewhere.spi.SiteWhereException;
  */
 public class UnqiueIdCounterMap extends UniqueIdMap<String, Long> {
 
-	public UnqiueIdCounterMap(SiteWhereHBaseClient hbase, UniqueIdType keyIndicator, UniqueIdType valueIndicator) {
+	public UnqiueIdCounterMap(SiteWhereHBaseClient hbase, UniqueIdType keyIndicator,
+			UniqueIdType valueIndicator) {
 		super(hbase, keyIndicator, valueIndicator);
 	}
 
@@ -57,26 +55,16 @@ public class UnqiueIdCounterMap extends UniqueIdMap<String, Long> {
 		ByteBuffer counterRow = ByteBuffer.allocate(2);
 		counterRow.put(UniqueIdType.CounterPlaceholder.getIndicator());
 		counterRow.put(getKeyIndicator().getIndicator());
-		GetRequest get = new GetRequest(ISiteWhereHBase.UID_TABLE_NAME, counterRow.array());
+		byte[] counterKey = counterRow.array();
+		HTableInterface uids = null;
 		try {
-			// Check whether a counter row exists.
-			ArrayList<KeyValue> results = getHbase().getClient().get(get).joinUninterruptibly();
-			if (!results.isEmpty()) {
-				// Increment existing counter row atomically.
-				AtomicIncrementRequest request = new AtomicIncrementRequest(
-						ISiteWhereHBase.UID_TABLE_NAME, counterRow.array(),
-						ISiteWhereHBase.FAMILY_ID, UniqueIdMap.VALUE_QUAL);
-				return getHbase().getClient().atomicIncrement(request).joinUninterruptibly();
-			} else {
-				// Write initial counter row.
-				KeyValue one = new KeyValue(counterRow.array(), ISiteWhereHBase.FAMILY_ID,
-						UniqueIdMap.VALUE_QUAL, Bytes.fromLong(1));
-				PutRequest put = new PutRequest(ISiteWhereHBase.UID_TABLE_NAME, one);
-				getHbase().getClient().put(put).joinUninterruptibly();
-				return 1L;
-			}
+			uids = hbase.getConnection().getTable(ISiteWhereHBase.UID_TABLE_NAME);
+			return uids.incrementColumnValue(counterKey, ISiteWhereHBase.FAMILY_ID, UniqueIdMap.VALUE_QUAL,
+					1L);
 		} catch (Exception e) {
-			throw new SiteWhereException("Unable to get next counter value.", e);
+			throw new SiteWhereException("Error scanning user rows.", e);
+		} finally {
+			HBaseUtils.closeCleanly(uids);
 		}
 	}
 
@@ -104,7 +92,7 @@ public class UnqiueIdCounterMap extends UniqueIdMap<String, Long> {
 	 * @see com.sitewhere.hbase.uid.UniqueIdMap#convertValue(byte[])
 	 */
 	public Long convertValue(byte[] bytes) {
-		return Bytes.getLong(bytes);
+		return Bytes.toLong(bytes);
 	}
 
 	/*
@@ -113,6 +101,6 @@ public class UnqiueIdCounterMap extends UniqueIdMap<String, Long> {
 	 * @see com.sitewhere.hbase.uid.UniqueIdMap#convertValue(java.lang.Object)
 	 */
 	public byte[] convertValue(Long value) {
-		return Bytes.fromLong(value);
+		return Bytes.toBytes(value);
 	}
 }

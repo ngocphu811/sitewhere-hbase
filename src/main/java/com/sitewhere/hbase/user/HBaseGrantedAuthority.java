@@ -9,24 +9,27 @@
  */
 package com.sitewhere.hbase.user;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.log4j.Logger;
-import org.hbase.async.Bytes;
-import org.hbase.async.GetRequest;
-import org.hbase.async.KeyValue;
-import org.hbase.async.PutRequest;
-import org.hbase.async.Scanner;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.hbase.common.MarshalUtils;
-import com.sitewhere.hbase.device.HBasePersistence;
 import com.sitewhere.rest.model.user.GrantedAuthority;
 import com.sitewhere.spi.SiteWhereException;
 import com.sitewhere.spi.SiteWhereSystemException;
@@ -42,9 +45,6 @@ import com.sitewhere.spi.user.request.IGrantedAuthorityCreateRequest;
  * @author Derek
  */
 public class HBaseGrantedAuthority {
-
-	/** Static logger instance */
-	private static Logger LOGGER = Logger.getLogger(HBaseGrantedAuthority.class);
 
 	/**
 	 * Create a new granted authority.
@@ -67,9 +67,17 @@ public class HBaseGrantedAuthority {
 		byte[] primary = getGrantedAuthorityRowKey(request.getAuthority());
 		byte[] json = MarshalUtils.marshalJson(auth);
 
-		PutRequest put = new PutRequest(ISiteWhereHBase.USERS_TABLE_NAME, primary, ISiteWhereHBase.FAMILY_ID,
-				ISiteWhereHBase.JSON_CONTENT, json);
-		HBasePersistence.syncPut(hbase, put, "Unable to set JSON for granted authority.");
+		HTableInterface users = null;
+		try {
+			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			Put put = new Put(primary);
+			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
+			users.put(put);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to create granted authority.", e);
+		} finally {
+			HBaseUtils.closeCleanly(users);
+		}
 
 		return auth;
 	}
@@ -85,18 +93,26 @@ public class HBaseGrantedAuthority {
 	public static GrantedAuthority getGrantedAuthorityByName(SiteWhereHBaseClient hbase, String name)
 			throws SiteWhereException {
 		byte[] rowkey = getGrantedAuthorityRowKey(name);
-		GetRequest request = new GetRequest(ISiteWhereHBase.USERS_TABLE_NAME, rowkey).family(
-				ISiteWhereHBase.FAMILY_ID).qualifier(ISiteWhereHBase.JSON_CONTENT);
-		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
-				"Unable to load granted authority by name.");
-		if (results.size() == 0) {
-			return null;
-		} else if (results.size() > 1) {
-			throw new SiteWhereException("Expected one JSON entry for granted authority and found: "
-					+ results.size());
+
+		HTableInterface users = null;
+		try {
+			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			Get get = new Get(rowkey);
+			get.addColumn(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT);
+			Result result = users.get(get);
+			if (result.size() == 0) {
+				return null;
+			}
+			if (result.size() > 1) {
+				throw new SiteWhereException("Expected one JSON entry for granted authority and found: "
+						+ result.size());
+			}
+			return MarshalUtils.unmarshalJson(result.value(), GrantedAuthority.class);
+		} catch (IOException e) {
+			throw new SiteWhereException("Unable to load granted authority by name.", e);
+		} finally {
+			HBaseUtils.closeCleanly(users);
 		}
-		byte[] json = results.get(0).value();
-		return MarshalUtils.unmarshalJson(json, GrantedAuthority.class);
 	}
 
 	/**
@@ -109,36 +125,37 @@ public class HBaseGrantedAuthority {
 	 */
 	public static List<IGrantedAuthority> listGrantedAuthorities(SiteWhereHBaseClient hbase,
 			IGrantedAuthoritySearchCriteria criteria) throws SiteWhereException {
-		Scanner scanner = hbase.getClient().newScanner(ISiteWhereHBase.USERS_TABLE_NAME);
-		scanner.setStartKey(new byte[] { UserRecordType.GrantedAuthority.getType() });
-		scanner.setStopKey(new byte[] { UserRecordType.End.getType() });
+		HTableInterface users = null;
+		ResultScanner scanner = null;
 		try {
+			users = hbase.getConnection().getTable(ISiteWhereHBase.USERS_TABLE_NAME);
+			Scan scan = new Scan();
+			scan.setStartRow(new byte[] { UserRecordType.GrantedAuthority.getType() });
+			scan.setStopRow(new byte[] { UserRecordType.End.getType() });
+			scanner = users.getScanner(scan);
+
 			ArrayList<IGrantedAuthority> matches = new ArrayList<IGrantedAuthority>();
-			ArrayList<ArrayList<KeyValue>> results;
-			while ((results = scanner.nextRows().joinUninterruptibly()) != null) {
-				for (ArrayList<KeyValue> row : results) {
-					boolean shouldAdd = true;
-					KeyValue jsonColumn = null;
-					for (KeyValue column : row) {
-						byte[] qualifier = column.qualifier();
-						if (Bytes.equals(ISiteWhereHBase.JSON_CONTENT, qualifier)) {
-							jsonColumn = column;
-						}
+			for (Result result : scanner) {
+				boolean shouldAdd = true;
+				Map<byte[], byte[]> row = result.getFamilyMap(ISiteWhereHBase.FAMILY_ID);
+				byte[] json = null;
+				for (byte[] qualifier : row.keySet()) {
+					if (Bytes.equals(ISiteWhereHBase.JSON_CONTENT, qualifier)) {
+						json = row.get(qualifier);
 					}
-					if ((shouldAdd) && (jsonColumn != null)) {
-						matches.add(MarshalUtils.unmarshalJson(jsonColumn.value(), GrantedAuthority.class));
-					}
+				}
+				if ((shouldAdd) && (json != null)) {
+					matches.add(MarshalUtils.unmarshalJson(json, GrantedAuthority.class));
 				}
 			}
 			return matches;
 		} catch (Exception e) {
-			throw new SiteWhereException("Error scanning results for listing granted authorities.", e);
+			throw new SiteWhereException("Error scanning user rows.", e);
 		} finally {
-			try {
-				scanner.close().joinUninterruptibly();
-			} catch (Exception e) {
-				LOGGER.error("Error shutting down scanner for listing granted authorities.", e);
+			if (scanner != null) {
+				scanner.close();
 			}
+			HBaseUtils.closeCleanly(users);
 		}
 	}
 
@@ -149,7 +166,7 @@ public class HBaseGrantedAuthority {
 	 * @return
 	 */
 	public static byte[] getGrantedAuthorityRowKey(String name) {
-		byte[] gaBytes = Bytes.UTF8(name);
+		byte[] gaBytes = Bytes.toBytes(name);
 		ByteBuffer buffer = ByteBuffer.allocate(1 + gaBytes.length);
 		buffer.put(UserRecordType.GrantedAuthority.getType());
 		buffer.put(gaBytes);

@@ -9,11 +9,17 @@
  */
 package com.sitewhere.hbase.device;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Increment;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
@@ -22,21 +28,14 @@ import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.RegexStringComparator;
 import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
-import org.apache.log4j.Logger;
-import org.hbase.async.AtomicIncrementRequest;
-import org.hbase.async.Bytes;
-import org.hbase.async.DeleteRequest;
-import org.hbase.async.GetRequest;
-import org.hbase.async.KeyValue;
-import org.hbase.async.PutRequest;
+import org.apache.hadoop.hbase.util.Bytes;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sitewhere.core.SiteWherePersistence;
 import com.sitewhere.hbase.ISiteWhereHBase;
 import com.sitewhere.hbase.SiteWhereHBaseClient;
+import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.common.Pager;
-import com.sitewhere.hbase.common.SiteWhereTables;
 import com.sitewhere.hbase.uid.IdManager;
 import com.sitewhere.rest.model.device.DeviceAssignment;
 import com.sitewhere.rest.model.device.Site;
@@ -59,17 +58,14 @@ import com.sitewhere.spi.search.ISearchCriteria;
  */
 public class HBaseSite {
 
-	/** Private logger instance */
-	private static Logger LOGGER = Logger.getLogger(HBaseSite.class);
-
 	/** Length of site identifier (subset of 8 byte long) */
 	public static final int SITE_IDENTIFIER_LENGTH = 2;
 
 	/** Column qualifier for zone counter */
-	public static final byte[] ZONE_COUNTER = Bytes.UTF8("zonectr");
+	public static final byte[] ZONE_COUNTER = Bytes.toBytes("zonectr");
 
 	/** Column qualifier for assignment counter */
-	public static final byte[] ASSIGNMENT_COUNTER = Bytes.UTF8("assnctr");
+	public static final byte[] ASSIGNMENT_COUNTER = Bytes.toBytes("assnctr");
 
 	/** Regex for getting site rows */
 	public static final String REGEX_SITE = "^.{2}$";
@@ -94,13 +90,21 @@ public class HBaseSite {
 
 		// Create primary site record.
 		byte[] json = MarshalUtils.marshalJson(site);
-		byte[] maxLong = Bytes.fromLong(Long.MAX_VALUE);
-		byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ZONE_COUNTER, ASSIGNMENT_COUNTER };
-		byte[][] values = { json, maxLong, maxLong };
-		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, primary, ISiteWhereHBase.FAMILY_ID,
-				qualifiers, values);
-		HBasePersistence.syncPut(hbase, put, "Unable to create site.");
+		byte[] maxLong = Bytes.toBytes(Long.MAX_VALUE);
 
+		HTableInterface sites = null;
+		try {
+			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			Put put = new Put(primary);
+			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
+			put.add(ISiteWhereHBase.FAMILY_ID, ZONE_COUNTER, maxLong);
+			put.add(ISiteWhereHBase.FAMILY_ID, ASSIGNMENT_COUNTER, maxLong);
+			sites.put(put);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to create site.", e);
+		} finally {
+			HBaseUtils.closeCleanly(sites);
+		}
 		return site;
 	}
 
@@ -118,19 +122,20 @@ public class HBaseSite {
 			return null;
 		}
 		byte[] primary = getPrimaryRowkey(siteId);
-		GetRequest request = new GetRequest(ISiteWhereHBase.SITES_TABLE_NAME, primary).family(
-				ISiteWhereHBase.FAMILY_ID).qualifier(ISiteWhereHBase.JSON_CONTENT);
-		ArrayList<KeyValue> results = HBasePersistence.syncGet(hbase, request,
-				"Unable to load site by token.");
-		if (results.size() != 1) {
-			throw new SiteWhereException("Expected one JSON entry for site and found: " + results.size());
-		}
-		byte[] json = results.get(0).value();
-		ObjectMapper mapper = new ObjectMapper();
+		HTableInterface sites = null;
 		try {
-			return mapper.readValue(json, Site.class);
-		} catch (Throwable e) {
-			throw new SiteWhereException("Unable to parse site JSON.", e);
+			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			Get get = new Get(primary);
+			get.addColumn(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT);
+			Result result = sites.get(get);
+			if (result.size() != 1) {
+				throw new SiteWhereException("Expected one JSON entry for site and found: " + result.size());
+			}
+			return MarshalUtils.unmarshalJson(result.value(), Site.class);
+		} catch (IOException e) {
+			throw new SiteWhereException("Unable to load site by token.", e);
+		} finally {
+			HBaseUtils.closeCleanly(sites);
 		}
 	}
 
@@ -156,9 +161,18 @@ public class HBaseSite {
 		Long siteId = IdManager.getInstance().getSiteKeys().getValue(token);
 		byte[] rowkey = getPrimaryRowkey(siteId);
 		byte[] json = MarshalUtils.marshalJson(updated);
-		PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey, ISiteWhereHBase.FAMILY_ID,
-				ISiteWhereHBase.JSON_CONTENT, json);
-		HBasePersistence.syncPut(hbase, put, "Unable to update site.");
+
+		HTableInterface sites = null;
+		try {
+			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			Put put = new Put(rowkey);
+			put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, json);
+			sites.put(put);
+		} catch (Exception e) {
+			throw new SiteWhereException("Unable to update site.", e);
+		} finally {
+			HBaseUtils.closeCleanly(sites);
+		}
 		return updated;
 	}
 
@@ -245,9 +259,10 @@ public class HBaseSite {
 	public static Pager<byte[]> getFilteredSiteRows(SiteWhereHBaseClient hbase, boolean includeDeleted,
 			ISearchCriteria criteria, WritableByteArrayComparable comparator, byte[] startRow, byte[] stopRow)
 			throws SiteWhereException {
-		HTable sites = SiteWhereTables.getHTable(hbase, ISiteWhereHBase.SITES_TABLE_NAME);
+		HTableInterface sites = null;
 		ResultScanner scanner = null;
 		try {
+			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
 			RowFilter matcher = new RowFilter(CompareOp.EQUAL, comparator);
 			Scan scan = new Scan();
 			if (startRow != null) {
@@ -263,7 +278,7 @@ public class HBaseSite {
 			for (Result result : scanner) {
 				boolean shouldAdd = true;
 				byte[] json = null;
-				for (org.apache.hadoop.hbase.KeyValue column : result.raw()) {
+				for (KeyValue column : result.raw()) {
 					byte[] qualifier = column.getQualifier();
 					if ((Bytes.equals(ISiteWhereHBase.DELETED, qualifier)) && (!includeDeleted)) {
 						shouldAdd = false;
@@ -280,14 +295,10 @@ public class HBaseSite {
 		} catch (Exception e) {
 			throw new SiteWhereException("Error scanning site rows.", e);
 		} finally {
-			try {
-				if (scanner != null) {
-					scanner.close();
-				}
-				sites.close();
-			} catch (Throwable e) {
-				LOGGER.error("Error on site search cleanup.", e);
+			if (scanner != null) {
+				scanner.close();
 			}
+			HBaseUtils.closeCleanly(sites);
 		}
 	}
 
@@ -312,21 +323,32 @@ public class HBaseSite {
 		byte[] rowkey = getPrimaryRowkey(siteId);
 		if (force) {
 			IdManager.getInstance().getSiteKeys().delete(token);
-			DeleteRequest delete = new DeleteRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey);
+			HTableInterface sites = null;
 			try {
-				hbase.getClient().delete(delete).joinUninterruptibly();
+				Delete delete = new Delete(rowkey);
+				sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+				sites.delete(delete);
 			} catch (Exception e) {
 				throw new SiteWhereException("Unable to delete site.", e);
+			} finally {
+				HBaseUtils.closeCleanly(sites);
 			}
 		} else {
 			byte[] marker = { (byte) 0x01 };
 			SiteWherePersistence.setUpdatedEntityMetadata(existing);
 			byte[] updated = MarshalUtils.marshalJson(existing);
-			byte[][] qualifiers = { ISiteWhereHBase.JSON_CONTENT, ISiteWhereHBase.DELETED };
-			byte[][] values = { updated, marker };
-			PutRequest put = new PutRequest(ISiteWhereHBase.SITES_TABLE_NAME, rowkey,
-					ISiteWhereHBase.FAMILY_ID, qualifiers, values);
-			HBasePersistence.syncPut(hbase, put, "Unable to set deleted flag for site.");
+			HTableInterface sites = null;
+			try {
+				sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+				Put put = new Put(rowkey);
+				put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.JSON_CONTENT, updated);
+				put.add(ISiteWhereHBase.FAMILY_ID, ISiteWhereHBase.DELETED, marker);
+				sites.put(put);
+			} catch (Exception e) {
+				throw new SiteWhereException("Unable to set deleted flag for site.", e);
+			} finally {
+				HBaseUtils.closeCleanly(sites);
+			}
 		}
 		return existing;
 	}
@@ -341,12 +363,17 @@ public class HBaseSite {
 	 */
 	public static Long allocateNextZoneId(SiteWhereHBaseClient hbase, Long siteId) throws SiteWhereException {
 		byte[] primary = getPrimaryRowkey(siteId);
-		AtomicIncrementRequest request = new AtomicIncrementRequest(ISiteWhereHBase.SITES_TABLE_NAME,
-				primary, ISiteWhereHBase.FAMILY_ID, ZONE_COUNTER, -1);
+		HTableInterface sites = null;
 		try {
-			return hbase.getClient().atomicIncrement(request).joinUninterruptibly();
+			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			Increment increment = new Increment(primary);
+			increment.addColumn(ISiteWhereHBase.FAMILY_ID, ZONE_COUNTER, -1);
+			Result result = sites.increment(increment);
+			return Bytes.toLong(result.value());
 		} catch (Exception e) {
 			throw new SiteWhereException("Unable to allocate next zone id.", e);
+		} finally {
+			HBaseUtils.closeCleanly(sites);
 		}
 	}
 
@@ -362,12 +389,17 @@ public class HBaseSite {
 	public static Long allocateNextAssignmentId(SiteWhereHBaseClient hbase, Long siteId)
 			throws SiteWhereException {
 		byte[] primary = getPrimaryRowkey(siteId);
-		AtomicIncrementRequest request = new AtomicIncrementRequest(ISiteWhereHBase.SITES_TABLE_NAME,
-				primary, ISiteWhereHBase.FAMILY_ID, ASSIGNMENT_COUNTER, -1);
+		HTableInterface sites = null;
 		try {
-			return hbase.getClient().atomicIncrement(request).joinUninterruptibly();
+			sites = hbase.getConnection().getTable(ISiteWhereHBase.SITES_TABLE_NAME);
+			Increment increment = new Increment(primary);
+			increment.addColumn(ISiteWhereHBase.FAMILY_ID, ASSIGNMENT_COUNTER, -1);
+			Result result = sites.increment(increment);
+			return Bytes.toLong(result.value());
 		} catch (Exception e) {
 			throw new SiteWhereException("Unable to allocate next assignment id.", e);
+		} finally {
+			HBaseUtils.closeCleanly(sites);
 		}
 	}
 
@@ -379,7 +411,7 @@ public class HBaseSite {
 	 * @return
 	 */
 	public static byte[] getSiteIdentifier(Long value) {
-		byte[] bytes = Bytes.fromLong(value);
+		byte[] bytes = Bytes.toBytes(value);
 		byte[] result = new byte[SITE_IDENTIFIER_LENGTH];
 		System.arraycopy(bytes, bytes.length - SITE_IDENTIFIER_LENGTH, result, 0, SITE_IDENTIFIER_LENGTH);
 		return result;
