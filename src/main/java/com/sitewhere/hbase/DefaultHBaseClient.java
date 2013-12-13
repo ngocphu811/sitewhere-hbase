@@ -106,7 +106,7 @@ public class DefaultHBaseClient implements InitializingBean, ISiteWhereHBaseClie
 	@Override
 	public HTableInterface getTableInterface(byte[] tableName) throws SiteWhereException {
 		try {
-			return getConnection().getTable(ISiteWhereHBase.DEVICES_TABLE_NAME);
+			return getConnection().getTable(tableName);
 		} catch (IOException e) {
 			throw new SiteWhereException("IOException getting HBase table interface.", e);
 		}
