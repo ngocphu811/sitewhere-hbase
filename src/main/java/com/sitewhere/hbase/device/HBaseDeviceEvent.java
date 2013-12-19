@@ -18,6 +18,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import javax.xml.bind.DatatypeConverter;
+
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -89,6 +91,8 @@ public class HBaseDeviceEvent {
 		// Create measurements object and marshal to JSON.
 		DeviceMeasurements measurements =
 				SiteWherePersistence.deviceMeasurementsCreateLogic(request, assignment);
+		String id = getEncodedEventId(rowkey, qualifier);
+		measurements.setId(id);
 		byte[] json = MarshalUtils.marshalJson(measurements);
 
 		HTableInterface events = null;
@@ -159,6 +163,8 @@ public class HBaseDeviceEvent {
 		byte[] qualifier = getQualifier(DeviceAssignmentRecordType.Location, time);
 
 		DeviceLocation location = SiteWherePersistence.deviceLocationCreateLogic(assignment, request);
+		String id = getEncodedEventId(rowkey, qualifier);
+		location.setId(id);
 		byte[] json = MarshalUtils.marshalJson(location);
 
 		HTableInterface events = null;
@@ -229,6 +235,8 @@ public class HBaseDeviceEvent {
 
 		// Create alert and marshal to JSON.
 		DeviceAlert alert = SiteWherePersistence.deviceAlertCreateLogic(assignment, request);
+		String id = getEncodedEventId(rowkey, qualifier);
+		alert.setId(id);
 		byte[] json = MarshalUtils.marshalJson(alert);
 
 		HTableInterface events = null;
@@ -578,5 +586,19 @@ public class HBaseDeviceEvent {
 		buffer.put((byte) ~offsetBytes[7]);
 		buffer.put(eventType.getType());
 		return buffer.array();
+	}
+
+	/**
+	 * Creates a base 64 encoded String for unique event key.
+	 * 
+	 * @param rowkey
+	 * @param qualifier
+	 * @return
+	 */
+	public static String getEncodedEventId(byte[] rowkey, byte[] qualifier) {
+		ByteBuffer buffer = ByteBuffer.allocate(rowkey.length + qualifier.length);
+		buffer.put(rowkey);
+		buffer.put(qualifier);
+		return DatatypeConverter.printBase64Binary(buffer.array());
 	}
 }
