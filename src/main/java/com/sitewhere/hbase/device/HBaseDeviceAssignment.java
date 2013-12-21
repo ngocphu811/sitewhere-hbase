@@ -11,7 +11,6 @@ package com.sitewhere.hbase.device;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Date;
 
 import org.apache.hadoop.hbase.client.Delete;
@@ -27,7 +26,6 @@ import com.sitewhere.hbase.ISiteWhereHBaseClient;
 import com.sitewhere.hbase.common.HBaseUtils;
 import com.sitewhere.hbase.common.MarshalUtils;
 import com.sitewhere.hbase.uid.IdManager;
-import com.sitewhere.rest.model.common.MetadataEntry;
 import com.sitewhere.rest.model.common.MetadataProvider;
 import com.sitewhere.rest.model.device.DeviceAssignment;
 import com.sitewhere.rest.model.device.DeviceAssignmentState;
@@ -156,7 +154,7 @@ public class HBaseDeviceAssignment {
 	public static DeviceAssignment updateDeviceAssignmentMetadata(ISiteWhereHBaseClient hbase, String token,
 			IMetadataProvider metadata) throws SiteWhereException {
 		DeviceAssignment updated = getDeviceAssignment(hbase, token);
-		updated.setMetadata(new ArrayList<MetadataEntry>());
+		updated.clearMetadata();
 		MetadataProvider.copy(metadata, updated);
 		SiteWherePersistence.setUpdatedEntityMetadata(updated);
 
